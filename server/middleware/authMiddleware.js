@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 // Diese Middleware-Funktion schützt Routen.
 // Sie prüft, ob ein gültiger JWT im 'Authorization'-Header mitgesendet wird.
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => { // Made function async
   // Token aus dem Header extrahieren (Format: "Bearer TOKEN")
   const authHeader = req.header('Authorization');
   
