@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html, body {
+  height: 100vh; /* Full viewport height */
+  width: 100vw;   /* Full viewport width */
+  margin: 0;      /* Remove default margins */
+  padding: 0;     /* Remove default padding */
+  background-color: lightgrey; /* Distinct background for body */
+  /* To ensure #root can be centered and max-height respected */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Ensure #root can take up space within the flex container if needed,
+   but will be constrained by its own max-width/max-height in App.css */
+#root {
+  /* Optional: Add a default width/height for #root if it has no content,
+     but usually content will define its size up to the max values.
+     width: 100%;
+     height: 100%;
+  */
+}

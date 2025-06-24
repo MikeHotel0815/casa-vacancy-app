@@ -1,10 +1,16 @@
 #root {
   max-width: 1920px;
   max-height: 1080px;
-  margin: 0 auto;
+  /* margin: 0 auto; /* No longer needed if body is flex centering */
   padding: 2rem;
   text-align: center;
   overflow: auto; /* Handle content exceeding dimensions */
+  background-color: white; /* Distinct background for #root */
+  /* Ensure #root doesn't shrink smaller than its content if possible, up to max-width/height */
+  width: auto; /* Or consider width: 100% if you want it to try to fill parent up to max-width */
+  height: auto; /* Or consider height: 100% if you want it to try to fill parent up to max-height */
+  /* Adding border for visual debugging */
+  border: 2px solid red;
 }
 
 .logo {
