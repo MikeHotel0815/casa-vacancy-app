@@ -17,7 +17,20 @@ const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Die entschlüsselten Benutzerdaten an das Request-Objekt anhängen
-    req.user = decoded;
+    // Wichtig: Wir müssen den Benutzer aus der DB laden, um aktuelle isAdmin Info zu haben
+    const User = require('../models/User'); // User-Modell importieren
+    const userFromDb = await User.findByPk(decoded.id);
+
+    if (!userFromDb) {
+      return res.status(401).json({ msg: 'Benutzer nicht gefunden.' });
+    }
+
+    req.user = {
+      id: userFromDb.id,
+      email: userFromDb.email,
+      displayName: userFromDb.displayName,
+      isAdmin: userFromDb.isAdmin, // isAdmin Status hinzufügen
+    };
     
     // Mit der Ausführung der eigentlichen Route fortfahren
     next();
@@ -26,4 +39,13 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = authMiddleware;
+// Middleware um Admin-Routen zu schützen
+const adminOnly = (req, res, next) => {
+  if (req.user && req.user.isAdmin) {
+    next();
+  } else {
+    res.status(403).json({ msg: 'Zugriff verweigert. Nur für Administratoren.' });
+  }
+};
+
+module.exports = { authMiddleware, adminOnly };

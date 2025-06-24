@@ -27,14 +27,19 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 4. Neuen Benutzer in der Datenbank erstellen
+    // 4. Überprüfen, ob dies der erste Benutzer ist
+    const userCount = await User.count();
+    const isAdmin = userCount === 0;
+
+    // 5. Neuen Benutzer in der Datenbank erstellen
     const newUser = await User.create({
       displayName,
       email,
       password: hashedPassword,
+      isAdmin, // Setze isAdmin basierend auf der Prüfung
     });
 
-    res.status(201).json({ msg: 'Benutzer erfolgreich registriert.', userId: newUser.id });
+    res.status(201).json({ msg: 'Benutzer erfolgreich registriert.', userId: newUser.id, isAdmin: newUser.isAdmin });
 
   } catch (error) {
     res.status(500).json({ error: error.message });

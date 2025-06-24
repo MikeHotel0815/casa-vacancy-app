@@ -23,6 +23,11 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false, // Passwort ist ein Pflichtfeld
   },
+  isAdmin: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false, // Standardwert ist false
+  },
 }, {
   // Model-Optionen
   timestamps: true, // Fügt die Felder 'createdAt' und 'updatedAt' automatisch hinzu
