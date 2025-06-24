@@ -17,6 +17,12 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.DATEONLY, // Speichert nur das Datum, ohne Uhrzeit
     allowNull: false,         // Enddatum ist ein Pflichtfeld
   },
+  // Hinzugefügtes Feld für den Anzeigenamen des buchenden Benutzers.
+  // Dies ist eine Denormalisierung zur Vereinfachung der Anzeige im Frontend.
+  displayName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,

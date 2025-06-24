@@ -6,8 +6,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Importieren u
 const router = express.Router();
 
 // ---- ROUTE: GET /api/bookings ----
-// Ruft alle existierenden Buchungen ab. Dies ist eine öffentliche Route,
-// damit der Kalender für alle sichtbar die belegten Zeiten anzeigen kann.
+// Ruft alle existierenden Buchungen ab.
 router.get('/', async (req, res) => {
   try {
     const bookings = await Booking.findAll();
@@ -18,18 +17,22 @@ router.get('/', async (req, res) => {
 });
 
 // ---- ROUTE: POST /api/bookings ----
-// Erstellt eine neue Buchung. Diese Route ist durch die Middleware geschützt.
+// Erstellt eine neue Buchung.
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { startDate, endDate } = req.body;
-    const userId = req.user.id; // Die userId wird sicher aus dem Token entnommen
+    const userId = req.user.id;
+    const displayName = req.user.displayName; // Anzeigename aus dem Token holen
 
-    // 1. Validierung der Eingaben
+    // 1. Validierung
     if (!startDate || !endDate) {
       return res.status(400).json({ msg: 'Bitte Start- und Enddatum angeben.' });
     }
+    if (!displayName) {
+        return res.status(400).json({ msg: 'Anzeigename nicht im Token gefunden.' });
+    }
 
-    // 2. Prüfen, ob der Zeitraum bereits gebucht ist (Überschneidungsprüfung)
+    // 2. Überschneidungsprüfung
     const existingBooking = await Booking.findOne({
       where: {
         [Op.or]: [
@@ -52,6 +55,7 @@ router.post('/', authMiddleware, async (req, res) => {
       startDate,
       endDate,
       userId,
+      displayName, // Anzeigename mitspeichern
     });
 
     res.status(201).json(newBooking);
@@ -62,7 +66,7 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // ---- ROUTE: DELETE /api/bookings/:id ----
-// Löscht eine Buchung. Geschützt durch Middleware.
+// Löscht eine Buchung.
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const bookingId = req.params.id;
@@ -70,12 +74,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
         const booking = await Booking.findByPk(bookingId);
 
-        // Prüfen, ob die Buchung existiert
         if (!booking) {
             return res.status(404).json({ msg: 'Buchung nicht gefunden.' });
         }
 
-        // Prüfen, ob der Benutzer der Eigentümer der Buchung ist
         if (booking.userId !== userId) {
             return res.status(403).json({ msg: 'Sie sind nicht berechtigt, diese Buchung zu löschen.' });
         }

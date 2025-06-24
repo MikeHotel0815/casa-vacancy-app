@@ -10,10 +10,10 @@ const router = express.Router();
 // Dient der Registrierung eines neuen Benutzers.
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { displayName, email, password } = req.body;
 
     // 1. Überprüfen, ob alle Felder ausgefüllt sind
-    if (!email || !password) {
+    if (!displayName || !email || !password) {
       return res.status(400).json({ msg: 'Bitte füllen Sie alle Felder aus.' });
     }
 
@@ -29,6 +29,7 @@ router.post('/register', async (req, res) => {
 
     // 4. Neuen Benutzer in der Datenbank erstellen
     const newUser = await User.create({
+      displayName,
       email,
       password: hashedPassword,
     });
@@ -64,20 +65,24 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ msg: 'Ungültige Anmeldedaten.' });
     }
 
+    // KORREKTUR: Fallback für den Anzeigenamen hinzufügen, falls er bei alten Benutzern fehlt.
+    const displayName = user.displayName || user.email;
+
     // 4. JSON Web Token (JWT) erstellen
     const payload = {
       id: user.id,
       email: user.email,
+      displayName: displayName, // Den (möglicherweise Fallback-)Namen verwenden
     };
     const token = jwt.sign(
       payload,
-      process.env.JWT_SECRET, // Ein geheimes Wort, das wir noch in der .env-Datei anlegen
-      { expiresIn: '1h' } // Token ist eine Stunde gültig
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
     );
 
     res.json({
       token,
-      user: { id: user.id, email: user.email }
+      user: { id: user.id, email: user.email, displayName: displayName } // Anzeigename auch hier hinzufügen
     });
 
   } catch (error) {

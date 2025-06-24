@@ -7,7 +7,10 @@ const { sequelize } = require('../config/database');
 // Definiert das 'User'-Modell
 const User = sequelize.define('User', {
   // Das Feld 'id' wird von Sequelize automatisch als Primärschlüssel (INTEGER, AUTO_INCREMENT) hinzugefügt.
-
+  displayName: {
+    type: DataTypes.STRING,
+    allowNull: false, // Anzeigename ist ein Pflichtfeld
+  },
   email: {
     type: DataTypes.STRING,
     allowNull: false, // E-Mail ist ein Pflichtfeld
