@@ -174,7 +174,7 @@ function App() {
         const clickedEndDate = start;
 
         // Set selectionEnd immediately for visual feedback by dayPropGetter
-        // setSelectionEnd(clickedEndDate); // No longer needed here, modal will handle final dates
+        setSelectionEnd(clickedEndDate); // THIS IS THE FIX: ensure selectionEnd is set for dayPropGetter
 
         const finalStartDate = selectionStart < clickedEndDate ? selectionStart : clickedEndDate;
         const finalEndDate = selectionStart < clickedEndDate ? clickedEndDate : selectionStart;
@@ -184,8 +184,8 @@ function App() {
         setModalEndDate(finalEndDate);
         setShowBookingModal(true);
 
-      // setSelectionStart(null); // Keep selection for visual feedback
-      // setSelectionEnd(null);   // Keep selection for visual feedback
+      // setSelectionStart(null); // These were for resetting earlier, now handled by modal closure logic or new selection
+      // setSelectionEnd(null);   // These were for resetting earlier, now handled by modal closure logic or new selection
       }
     }
   };
