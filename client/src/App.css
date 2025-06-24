@@ -1,15 +1,18 @@
+/* All styles in this file are temporarily commented out for diagnostic purposes.
+   The primary styles for html, body, and #root are being tested from the top of index.css.
+
 #root {
   width: 1920px !important;
   height: 1080px !important;
   max-width: 1920px !important;
   max-height: 1080px !important;
-  padding: 0 !important; /* Temporarily remove padding */
-  margin: 0 auto; /* For centering */
+  padding: 0 !important;
+  margin: 0 auto;
   text-align: center;
-  overflow: auto !important; /* Handle content exceeding dimensions */
-  background-color: white !important; /* Distinct background for #root */
-  border: 2px solid red !important; /* Adding border for visual debugging */
-  box-sizing: border-box !important; /* Be explicit about box model */
+  overflow: auto !important;
+  background-color: white !important;
+  border: 2px solid red !important;
+  box-sizing: border-box !important;
 }
 
 .logo {
@@ -47,3 +50,5 @@
 .read-the-docs {
   color: #888;
 }
+
+*/

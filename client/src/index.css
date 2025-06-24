@@ -1,24 +1,42 @@
+html {
+  background-color: lime !important; /* Bright green for html */
+}
+body {
+  background-color: blue !important; /* Bright blue for body */
+  min-height: 100vh !important; /* Ensure body takes at least viewport height */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#root {
+  width: 1920px !important;
+  height: 1080px !important;
+  max-width: 1920px !important; /* Ensure it doesn't exceed viewport if smaller */
+  max-height: 1080px !important; /* Ensure it doesn't exceed viewport if smaller */
+  background-color: yellow !important; /* Bright yellow for root */
+  border: 5px dashed red !important; /* Very obvious border */
+  margin: 20px auto !important; /* Top/bottom margin, auto for horizontal centering */
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: auto !important;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Previous html, body styles are now overridden by the specific ones above for this test */
+/*
 html, body {
-  height: 100vh; /* Full viewport height */
-  width: 100vw;   /* Full viewport width */
-  margin: 0;      /* Remove default margins */
-  padding: 0;     /* Remove default padding */
-  background-color: lightgrey; /* Distinct background for body */
-  /* display: flex;  Removed for testing */
-  /* justify-content: center; Removed for testing */
-  /* align-items: center; Removed for testing */
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  background-color: lightgrey;
 }
+*/
 
-/* Ensure #root can take up space within the flex container if needed,
-   but will be constrained by its own max-width/max-height in App.css */
+/* Previous #root styles in index.css (if any) are overridden */
+/*
 #root {
-  /* Optional: Add a default width/height for #root if it has no content,
-     but usually content will define its size up to the max values.
-     width: 100%;
-     height: 100%;
-  */
 }
+*/
