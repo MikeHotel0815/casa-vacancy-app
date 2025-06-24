@@ -39,8 +39,8 @@ const startServer = async () => {
     // {alter: true} versucht, die Tabellen an die Modelle anzupassen, ohne Daten zu löschen (wenn möglich).
     // {force: false} erstellt Tabellen nur, wenn sie nicht existieren.
     // {force: true} löscht Tabellen und erstellt sie neu (Datenverlust!).
-    await sequelize.sync({ alter: true });
-    console.log('Datenbank-Tabellen wurden erfolgreich synchronisiert (alter:true).');
+    await sequelize.sync({ force: false });
+    console.log('Datenbank-Tabellen wurden erfolgreich synchronisiert (force:false).');
 
     // 3. Den Server starten
     app.listen(PORT, () => {
