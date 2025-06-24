@@ -403,9 +403,11 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
         break;
       case 'publicHoliday':
         style.backgroundColor = '#2563eb'; // Blue
+        style.zIndex = 10; // Ensure public holidays are on top
         break;
       case 'schoolHoliday':
-        style.backgroundColor = '#16a34a'; // Green
+        style.backgroundColor = '#e0e0e0'; // Light gray
+        style.color = 'black'; // Black text
         break;
       default:
         style.backgroundColor = '#64748b'; // Slate
