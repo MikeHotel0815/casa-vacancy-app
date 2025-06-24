@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom'; // Wichtig für die Portal-Funktion
 import axios from 'axios';
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
@@ -77,6 +77,7 @@ function App() {
   const [modalEndDate, setModalEndDate] = useState(null);
   const [ignoreNextCalendarClick, setIgnoreNextCalendarClick] = useState(false);
 
+  const calendarRef = useRef(null); // Ref for the calendar container
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -136,6 +137,30 @@ function App() {
     fetchAllEvents();
   }, [date, user]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // If the modal is shown, don't clear selection from clicks outside calendar
+      // as the modal itself is outside but manages the selection process.
+      // The modal has its own backdrop click handling.
+      if (showBookingModal) {
+        return;
+      }
+
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        // Click is outside the calendar component
+        if (selectionStart || selectionEnd) { // Only clear if there's something selected
+          setSelectionStart(null);
+          setSelectionEnd(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [calendarRef, showBookingModal, selectionStart, selectionEnd]); // Add dependencies
+
   // --- HANDLER FUNCTIONS ---
   const handleLoginSuccess = (data) => {
     localStorage.setItem('token', data.token);
@@ -161,7 +186,10 @@ function App() {
     if (action === 'select') { // User finished a drag operation
       setSelectionStart(start);
       setSelectionEnd(end);
-      // Do not book yet. User will click to change/confirm or select a new start.
+      // Open the modal directly for the dragged selection
+      setModalStartDate(start); // Assuming start is always <= end from a drag
+      setModalEndDate(end);
+      setShowBookingModal(true);
     } else if (action === 'click') {
       if (!selectionStart || selectionEnd) {
         // Case 1: This is the FIRST click of a new selection period
@@ -408,7 +436,7 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
                     <button onClick={handleLogout} className="px-4 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Abmelden</button>
                 </div>
             </header>
-            <div className="flex-grow">
+            <div className="flex-grow" ref={calendarRef}> {/* Attach ref here */}
                 <Calendar
                     localizer={localizer}
                     events={events}
