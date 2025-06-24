@@ -1,42 +1,13 @@
-html {
-  background-color: lime !important; /* Bright green for html */
-}
-body {
-  background-color: blue !important; /* Bright blue for body */
-  min-height: 100vh !important; /* Ensure body takes at least viewport height */
-  margin: 0 !important;
-  padding: 0 !important;
-}
-#root {
-  width: 1920px !important;
-  height: 1080px !important;
-  max-width: 1920px !important; /* Ensure it doesn't exceed viewport if smaller */
-  max-height: 1080px !important; /* Ensure it doesn't exceed viewport if smaller */
-  background-color: yellow !important; /* Bright yellow for root */
-  border: 5px dashed red !important; /* Very obvious border */
-  margin: 20px auto !important; /* Top/bottom margin, auto for horizontal centering */
-  padding: 0 !important;
-  box-sizing: border-box !important;
-  overflow: auto !important;
-}
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Previous html, body styles are now overridden by the specific ones above for this test */
-/*
 html, body {
-  height: 100vh;
-  width: 100vw;
+  height: 100%; /* Or 100vh - 100% is often better if body content might be shorter than viewport */
   margin: 0;
   padding: 0;
-  background-color: lightgrey;
+  background-color: lightgrey; /* Or your preferred app background */
+  /* Add other global styles for html/body if needed, e.g., font-family */
 }
-*/
 
-/* Previous #root styles in index.css (if any) are overridden */
-/*
-#root {
-}
-*/
+/* No specific #root styles needed here if App.css handles it primarily */
