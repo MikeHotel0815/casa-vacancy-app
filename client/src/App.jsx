@@ -359,13 +359,13 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
     let style = {};
     if (selectionStart && !selectionEnd) { // Only start is selected, waiting for end
       if (currentDate.getTime() === normSelectionStart.getTime()) {
-        style.backgroundColor = 'rgba(100, 100, 255, 0.3)'; // Light blue for start
+        style.backgroundColor = 'rgba(100, 149, 237, 0.5)'; // Cornflower blue for start, 50% opacity
         style.borderRadius = '5px';
       }
     } else if (selectionStart && selectionEnd) { // Both start and end are defined (during drag or after second click before booking)
       const normSelectionEnd = normalizeDate(selectionEnd);
       if (currentDate >= normSelectionStart && currentDate <= normSelectionEnd) {
-        style.backgroundColor = 'rgba(173, 216, 230, 0.5)'; // Light blue for range
+        style.backgroundColor = 'rgba(100, 149, 237, 0.7)'; // Cornflower blue for range, 70% opacity
         if (currentDate.getTime() === normSelectionStart.getTime()) {
           style.borderTopLeftRadius = '5px';
           style.borderBottomLeftRadius = '5px';
