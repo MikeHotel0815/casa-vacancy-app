@@ -7,6 +7,7 @@ import parse from 'date-fns/parse';
 import startOfWeek from 'date-fns/startOfWeek';
 import getDay from 'date-fns/getDay';
 import de from 'date-fns/locale/de';
+import subDays from 'date-fns/subDays';
 
 // Komponenten importieren
 import Login from './components/Login';
@@ -184,11 +185,12 @@ function App() {
     }
 
     if (action === 'select') { // User finished a drag operation
+      const inclusiveEndDate = subDays(end, 1); // Adjust for exclusive end date
       setSelectionStart(start);
-      setSelectionEnd(end);
+      setSelectionEnd(inclusiveEndDate);
       // Open the modal directly for the dragged selection
-      setModalStartDate(start); // Assuming start is always <= end from a drag
-      setModalEndDate(end);
+      setModalStartDate(start);
+      setModalEndDate(inclusiveEndDate);
       setShowBookingModal(true);
     } else if (action === 'click') {
       if (!selectionStart || selectionEnd) {
