@@ -64,6 +64,7 @@ function App() {
   // --- CALENDAR & MODAL STATES ---
   const [events, setEvents] = useState([]);
   const [selectionStart, setSelectionStart] = useState(null);
+  const [selectionEnd, setSelectionEnd] = useState(null); // Added to store the end of the selection range
   const [date, setDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState(Views.MONTH);
   const [selectedBooking, setSelectedBooking] = useState(null); 
@@ -142,15 +143,44 @@ function App() {
     setView('login');
   };
 
-  const handleSelectSlot = ({ start }) => {
-    if (!selectionStart) {
+  const handleSelectSlot = ({ start, end, action }) => {
+    if (action === 'select') { // User finished a drag operation
       setSelectionStart(start);
-    } else {
-      const newEndDate = start > selectionStart ? start : selectionStart;
-      const newStartDate = start > selectionStart ? start : start;
-      handleCreateBooking(newStartDate, newEndDate);
-      setSelectionStart(null);
+      setSelectionEnd(end);
+      // Do not book yet. User will click to change/confirm or select a new start.
+    } else if (action === 'click') {
+      if (!selectionStart || selectionEnd) {
+        // Case 1: This is the FIRST click of a new selection period
+        // OR selectionEnd is already set (e.g. from a drag), so this click starts a NEW selection.
+        setSelectionStart(start);
+        setSelectionEnd(null); // Clear previous selectionEnd
+      } else {
+        // Case 2: This is the SECOND click. selectionStart is set, and selectionEnd is NOT.
+        // This click defines the end of the current selection period.
+        const clickedEndDate = start;
+
+        // Set selectionEnd immediately for visual feedback by dayPropGetter
+        setSelectionEnd(clickedEndDate);
+
+        const finalStartDate = selectionStart < clickedEndDate ? selectionStart : clickedEndDate;
+        const finalEndDate = selectionStart < clickedEndDate ? clickedEndDate : selectionStart;
+
+        // Proceed to book.
+        // Consider a slight delay if immediate state update for dayPropGetter is an issue,
+        // but usually React handles batching and re-rendering efficiently.
+        handleCreateBooking(finalStartDate, finalEndDate);
+        // selectionStart and selectionEnd will be reset by handleCreateBooking on success/failure.
+      }
     }
+  };
+
+  const handleSelecting = (range) => {
+    // This function is called when the user is dragging to select a range.
+    // It should return true to allow the selection, or false to prevent it.
+    // react-big-calendar will visually indicate the drag selection.
+    // We don't need to set state here for that default visual feedback.
+    // console.log('Currently selecting:', range);
+    return true; // Allow selection
   };
   
   const handleSelectEvent = (event) => {
@@ -178,6 +208,8 @@ function App() {
   const handleCreateBooking = async (startDate, endDate) => {
     if (!token) {
       alert("Bitte melden Sie sich an, um eine Buchung zu erstellen.");
+      setSelectionStart(null); // Reset selection on auth error
+      setSelectionEnd(null);
       return;
     }
     try {
@@ -186,11 +218,47 @@ function App() {
         { startDate: format(startDate, 'yyyy-MM-dd'), endDate: format(endDate, 'yyyy-MM-dd') },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setDate(new Date(date.getTime()));
+      setDate(new Date(date.getTime())); // Refresh calendar data
+      setSelectionStart(null); // Reset selection after successful booking
+      setSelectionEnd(null);
     } catch (error) {
       console.error("Fehler beim Erstellen der Buchung:", error);
       alert(error.response?.data?.msg || "Buchung konnte nicht erstellt werden.");
+      setSelectionStart(null); // Reset selection on booking error
+      setSelectionEnd(null);
     }
+  };
+
+  const dayPropGetter = (date) => {
+    if (!selectionStart) {
+      return {};
+    }
+    // Normalize date to remove time part for accurate comparison
+    const normalizeDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const currentDate = normalizeDate(date);
+    const normSelectionStart = normalizeDate(selectionStart);
+
+    let style = {};
+    if (selectionStart && !selectionEnd) { // Only start is selected, waiting for end
+      if (currentDate.getTime() === normSelectionStart.getTime()) {
+        style.backgroundColor = 'rgba(100, 100, 255, 0.3)'; // Light blue for start
+        style.borderRadius = '5px';
+      }
+    } else if (selectionStart && selectionEnd) { // Both start and end are defined (during drag or after second click before booking)
+      const normSelectionEnd = normalizeDate(selectionEnd);
+      if (currentDate >= normSelectionStart && currentDate <= normSelectionEnd) {
+        style.backgroundColor = 'rgba(173, 216, 230, 0.5)'; // Light blue for range
+        if (currentDate.getTime() === normSelectionStart.getTime()) {
+          style.borderTopLeftRadius = '5px';
+          style.borderBottomLeftRadius = '5px';
+        }
+        if (currentDate.getTime() === normSelectionEnd.getTime()) {
+          style.borderTopRightRadius = '5px';
+          style.borderBottomRightRadius = '5px';
+        }
+      }
+    }
+    return { style };
   };
 
   const eventStyleGetter = (event) => {
@@ -272,12 +340,20 @@ function App() {
                         noEventsInRange: "Keine Termine in diesem Zeitraum.",
                     }}
                     eventPropGetter={eventStyleGetter}
+                    dayPropGetter={dayPropGetter} // Added dayPropGetter
+                    onSelecting={handleSelecting} // Added onSelecting
+                    selectable={true} // Ensure selectable is true, can also be "ignoreEvents"
                     style={{ height: '100%' }}
                 />
             </div>
-            {selectionStart && (
+            {selectionStart && !selectionEnd && ( // Show message only when waiting for end date
                 <div className="mt-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-center animate-pulse">
-                    Startdatum ausgewählt: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong>. Bitte Enddatum auswählen.
+                    Startdatum ausgewählt: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong>. Bitte Enddatum auswählen oder Zeitraum ziehen.
+                </div>
+            )}
+             {selectionStart && selectionEnd && ( // Show message when a period is selected
+                <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-center">
+                    Ausgewählter Zeitraum: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong> bis <strong>{format(selectionEnd, 'dd.MM.yyyy')}</strong>. Erneut klicken zum Bestätigen oder neues Startdatum wählen.
                 </div>
             )}
         </div>
