@@ -1,0 +1,54 @@
+.gitignore
+Log-Dateien
+logs
+.log
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+Verzeichnis für Laufzeitdaten
+pids
+*.pid
+*.seed
+*.pid.lock
+
+Verzeichnis für Abhängigkeiten
+Dies ist der wichtigste Ordner, der ignoriert werden muss.
+node_modules/
+dist/
+build/
+.vite/
+
+Sensible Umgebungs-Dateien
+NIEMALS die .env-Datei mit den Passwörtern und Schlüsseln einchecken!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+Betriebssystem-generierte Dateien
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+Konfigurationsdateien von IDEs und Editoren
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+
+Optional: Coverage-Verzeichnis von Tests
+coverage/
+
+Optional: npm-Cache-Verzeichnis
+.npm
