@@ -36,10 +36,11 @@ const startServer = async () => {
     await connectDB();
     
     // 2. Modelle mit der Datenbank synchronisieren.
-    // {force: false} bedeutet, dass Tabellen nicht gelöscht und neu erstellt werden, wenn sie bereits existieren.
-    // Für die Entwicklung kann man {force: true} nutzen, um bei jeder Änderung am Modell die DB neu aufzubauen.
-    await sequelize.sync({ force: false }); 
-    console.log('Datenbank-Tabellen wurden erfolgreich synchronisiert.');
+    // {alter: true} versucht, die Tabellen an die Modelle anzupassen, ohne Daten zu löschen (wenn möglich).
+    // {force: false} erstellt Tabellen nur, wenn sie nicht existieren.
+    // {force: true} löscht Tabellen und erstellt sie neu (Datenverlust!).
+    await sequelize.sync({ alter: true });
+    console.log('Datenbank-Tabellen wurden erfolgreich synchronisiert (alter:true).');
 
     // 3. Den Server starten
     app.listen(PORT, () => {
