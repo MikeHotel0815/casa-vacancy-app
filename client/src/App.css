@@ -1,14 +1,14 @@
 #root {
-  width: 1920px; /* !important might be needed if issues reappear */
-  height: 1080px; /* !important might be needed if issues reappear */
-  max-width: 1920px; /* !important might be needed if issues reappear */
-  max-height: 1080px; /* !important might be needed if issues reappear */
+  width: 1920px !important;
+  height: 1080px !important;
+  max-width: 1920px !important;
+  max-height: 1080px !important;
   padding: 2rem; /* Restored original padding */
   margin: 0 auto; /* For centering */
   text-align: center;
   overflow: auto; /* Handle content exceeding dimensions */
   background-color: white; /* Normal background */
-  box-sizing: border-box; /* Standard box model */
+  box-sizing: border-box; /* Standard box model, Tailwind usually sets this globally */
 }
 
 .logo {
