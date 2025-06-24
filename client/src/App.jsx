@@ -391,7 +391,7 @@ function App() {
                     eventPropGetter={eventStyleGetter}
                     dayPropGetter={dayPropGetter} // Added dayPropGetter
                     onSelecting={handleSelecting} // Added onSelecting
-                    selectable={true} // Ensure selectable is true, can also be "ignoreEvents"
+                    // selectable={true} // Duplicate removed, already present above
                     style={{ height: '100%' }}
                 />
             </div>
