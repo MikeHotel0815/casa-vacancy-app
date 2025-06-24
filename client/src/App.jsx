@@ -212,8 +212,8 @@ function App() {
       );
       setShowBookingModal(false);
       setDate(new Date(date.getTime()));
-      setSelectionStart(null);
-      setSelectionEnd(null);
+      // setSelectionStart(null); // Keep selection for visual feedback until next user interaction
+      // setSelectionEnd(null);   // Keep selection for visual feedback until next user interaction
       setIgnoreNextCalendarClick(true);
       setTimeout(() => setIgnoreNextCalendarClick(false), 50);
     } catch (error) {
@@ -227,8 +227,8 @@ function App() {
 
 const handleModalClose = () => {
   setShowBookingModal(false);
-  setSelectionStart(null);
-  setSelectionEnd(null);
+  // setSelectionStart(null); // Keep selection for visual feedback
+  // setSelectionEnd(null);   // Keep selection for visual feedback
   setIgnoreNextCalendarClick(true);
   // It's safer to reset ignoreNextCalendarClick in handleSelectSlot
   // or use a very short timeout if clicks outside calendar are possible ways to close modal.
