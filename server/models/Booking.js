@@ -23,6 +23,14 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  status: { // Hinzugefügtes Feld für den Buchungsstatus
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'booked', // Standardwert 'booked'
+    validate: {
+      isIn: [['booked', 'reserved']], // Akzeptiert nur diese Werte
+    },
+  },
   userId: {
     type: DataTypes.INTEGER,
     allowNull: false,

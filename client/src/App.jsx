@@ -11,6 +11,7 @@ import de from 'date-fns/locale/de';
 // Komponenten importieren
 import Login from './components/Login';
 import Register from './components/Register';
+import BookingConfirmationModal from './components/BookingConfirmationModal'; // Import new modal
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -70,6 +71,11 @@ function App() {
   const [selectedBooking, setSelectedBooking] = useState(null); 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
+  // States for the new booking/reservation modal
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [modalStartDate, setModalStartDate] = useState(null);
+  const [modalEndDate, setModalEndDate] = useState(null);
+
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -94,12 +100,14 @@ function App() {
         ]);
 
         const formattedBookings = bookingsRes.data.map(booking => ({
-          id: booking.id, 
+          id: booking.id,
           userId: booking.userId,
-          title: `Belegt: ${booking.displayName}`,
+          title: `${booking.status === 'reserved' ? 'Reserviert' : 'Belegt'}: ${booking.displayName}`,
+          displayName: booking.displayName, // Store displayName separately for modal use
           start: new Date(booking.startDate),
           end: new Date(booking.endDate),
           type: 'booking',
+          status: booking.status,
         }));
         const formattedPublicHolidays = publicHolidaysRes.data.map(holiday => ({
           title: holiday.localName,
@@ -160,17 +168,49 @@ function App() {
         const clickedEndDate = start;
 
         // Set selectionEnd immediately for visual feedback by dayPropGetter
-        setSelectionEnd(clickedEndDate);
+        // setSelectionEnd(clickedEndDate); // No longer needed here, modal will handle final dates
 
         const finalStartDate = selectionStart < clickedEndDate ? selectionStart : clickedEndDate;
         const finalEndDate = selectionStart < clickedEndDate ? clickedEndDate : selectionStart;
 
-        // Proceed to book.
-        // Consider a slight delay if immediate state update for dayPropGetter is an issue,
-        // but usually React handles batching and re-rendering efficiently.
-        handleCreateBooking(finalStartDate, finalEndDate);
-        // selectionStart and selectionEnd will be reset by handleCreateBooking on success/failure.
+        // Instead of booking directly, open the modal
+        setModalStartDate(finalStartDate);
+        setModalEndDate(finalEndDate);
+        setShowBookingModal(true);
+
+        // Reset calendar selection highlights as modal takes over
+        setSelectionStart(null);
+        setSelectionEnd(null);
       }
+    }
+  };
+
+  const handleModalSubmit = async (newStartDate, newEndDate, type) => {
+    // This function will be called from the modal
+    // type will be 'booked' or 'reserved'
+    if (!token) {
+      alert("Bitte melden Sie sich an.");
+      setShowBookingModal(false);
+      return;
+    }
+    try {
+      await axios.post(
+        `${API_URL}/bookings`,
+        {
+          startDate: format(newStartDate, 'yyyy-MM-dd'),
+          endDate: format(newEndDate, 'yyyy-MM-dd'),
+          status: type // Send the status to the backend
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowBookingModal(false);
+      setDate(new Date(date.getTime())); // Refresh calendar data
+      // selectionStart and selectionEnd are already null or reset by handleSelectSlot
+    } catch (error) {
+      console.error(`Fehler beim ${type === 'booked' ? 'Buchen' : 'Reservieren'}:`, error);
+      alert(error.response?.data?.msg || `Buchung/Reservierung konnte nicht erstellt werden.`);
+      // Optionally, leave modal open on error or handle differently
+      // setShowBookingModal(false); // Or keep it open for correction
     }
   };
 
@@ -205,29 +245,30 @@ function App() {
     }
   };
 
-  const handleCreateBooking = async (startDate, endDate) => {
-    if (!token) {
-      alert("Bitte melden Sie sich an, um eine Buchung zu erstellen.");
-      setSelectionStart(null); // Reset selection on auth error
-      setSelectionEnd(null);
-      return;
-    }
-    try {
-      await axios.post(
-        `${API_URL}/bookings`,
-        { startDate: format(startDate, 'yyyy-MM-dd'), endDate: format(endDate, 'yyyy-MM-dd') },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setDate(new Date(date.getTime())); // Refresh calendar data
-      setSelectionStart(null); // Reset selection after successful booking
-      setSelectionEnd(null);
-    } catch (error) {
-      console.error("Fehler beim Erstellen der Buchung:", error);
-      alert(error.response?.data?.msg || "Buchung konnte nicht erstellt werden.");
-      setSelectionStart(null); // Reset selection on booking error
-      setSelectionEnd(null);
-    }
-  };
+  // const handleCreateBooking = async (startDate, endDate) => { // This function is now replaced by handleModalSubmit
+  //   if (!token) {
+  //     alert("Bitte melden Sie sich an, um eine Buchung zu erstellen.");
+  //     setSelectionStart(null); // Reset selection on auth error
+  //     setSelectionEnd(null);
+  //     return;
+  //   }
+  //   try {
+  //     await axios.post(
+  //       `${API_URL}/bookings`,
+  //       { startDate: format(startDate, 'yyyy-MM-dd'), endDate: format(endDate, 'yyyy-MM-dd') },
+  //       // Status would be added here if this function was kept
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+  //     setDate(new Date(date.getTime())); // Refresh calendar data
+  //     setSelectionStart(null); // Reset selection after successful booking
+  //     setSelectionEnd(null);
+  //   } catch (error) {
+  //     console.error("Fehler beim Erstellen der Buchung:", error);
+  //     alert(error.response?.data?.msg || "Buchung konnte nicht erstellt werden.");
+  //     setSelectionStart(null); // Reset selection on booking error
+  //     setSelectionEnd(null);
+  //   }
+  // };
 
   const dayPropGetter = (date) => {
     if (!selectionStart) {
@@ -273,16 +314,24 @@ function App() {
     };
     switch (event.type) {
       case 'booking':
-        style.backgroundColor = '#dc2626';
+        // Default booking color (e.g., red for 'booked')
+        style.backgroundColor = '#dc2626'; // Red for 'booked'
+        style.fontWeight = 'bold';
+        if (event.status === 'reserved') {
+          style.backgroundColor = '#fdba74'; // Lighter orange for 'reserved'
+          style.opacity = 0.7; // Reserved bookings are more transparent
+          style.color = '#7c2d12'; // Darker text for better readability on light orange
+          style.fontWeight = 'normal';
+        }
         break;
       case 'publicHoliday':
-        style.backgroundColor = '#2563eb';
+        style.backgroundColor = '#2563eb'; // Blue
         break;
       case 'schoolHoliday':
-        style.backgroundColor = '#16a34a';
+        style.backgroundColor = '#16a34a'; // Green
         break;
       default:
-        style.backgroundColor = '#64748b';
+        style.backgroundColor = '#64748b'; // Slate
         break;
     }
     return { style };
@@ -358,18 +407,35 @@ function App() {
             )}
         </div>
 
+        <BookingConfirmationModal
+            isOpen={showBookingModal}
+            onClose={() => setShowBookingModal(false)}
+            onSubmit={handleModalSubmit}
+            initialStartDate={modalStartDate}
+            initialEndDate={modalEndDate}
+        />
+
         {/* Das Modal wird jetzt mit der Portal-Komponente gerendert */}
         {selectedBooking && (
             <Modal>
                 <div style={{backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.5rem'}} className="shadow-xl max-w-md mx-4">
                     {!showConfirmDelete ? (
                         <>
-                            <h3 className="text-xl font-bold mb-4">Buchungsdetails</h3>
-                            <p><strong>Buchung für:</strong> {selectedBooking.title.replace('Belegt: ', '')}</p>
+                            <h3 className="text-xl font-bold mb-4">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
+                            <p><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
+                            <p><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-orange-600' : 'text-red-600'}`}>
+                                {selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}
+                            </span></p>
                             <p><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
                             <p><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
                             <div className="mt-6 flex justify-end space-x-4">
-                                <button onClick={() => alert("Bearbeitungsfunktion noch nicht implementiert.")} className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Bearbeiten</button>
+                                {/* Bearbeiten-Button könnte später den Status ändern oder Daten anpassen über PUT-Request */}
+                                <button
+                                    onClick={() => alert("Bearbeitungsfunktion (z.B. Status ändern von Reserviert zu Gebucht) noch nicht implementiert.")}
+                                    className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                                >
+                                    Bearbeiten
+                                </button>
                                 <button onClick={() => setShowConfirmDelete(true)} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>
                                 <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Schließen</button>
                             </div>
