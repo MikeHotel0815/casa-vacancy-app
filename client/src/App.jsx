@@ -178,19 +178,18 @@ function App() {
         setModalEndDate(finalEndDate);
         setShowBookingModal(true);
 
-        // Reset calendar selection highlights as modal takes over
-        setSelectionStart(null);
-        setSelectionEnd(null);
+      // setSelectionStart(null); // Keep selection for visual feedback
+      // setSelectionEnd(null);   // Keep selection for visual feedback
       }
     }
   };
 
   const handleModalSubmit = async (newStartDate, newEndDate, type) => {
-    // This function will be called from the modal
-    // type will be 'booked' or 'reserved'
     if (!token) {
       alert("Bitte melden Sie sich an.");
       setShowBookingModal(false);
+    setSelectionStart(null); // Clear selection on auth error before modal closes
+    setSelectionEnd(null);
       return;
     }
     try {
@@ -199,20 +198,46 @@ function App() {
         {
           startDate: format(newStartDate, 'yyyy-MM-dd'),
           endDate: format(newEndDate, 'yyyy-MM-dd'),
-          status: type // Send the status to the backend
+        status: type
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setShowBookingModal(false);
-      setDate(new Date(date.getTime())); // Refresh calendar data
-      // selectionStart and selectionEnd are already null or reset by handleSelectSlot
+    setDate(new Date(date.getTime()));
     } catch (error) {
       console.error(`Fehler beim ${type === 'booked' ? 'Buchen' : 'Reservieren'}:`, error);
       alert(error.response?.data?.msg || `Buchung/Reservierung konnte nicht erstellt werden.`);
-      // Optionally, leave modal open on error or handle differently
-      // setShowBookingModal(false); // Or keep it open for correction
+    // On error, modal remains open, selection remains visible for context.
+    // User can then retry, change dates, or cancel via handleModalClose.
     }
+  // No finally block needed here as success and error paths are distinct.
   };
+
+const handleModalClose = () => {
+  setShowBookingModal(false);
+  setSelectionStart(null); // Clear selection when modal is explicitly closed
+  setSelectionEnd(null);
+};
+
+const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
+  if (!token || !bookingToUpdate) {
+    alert("Aktion nicht möglich.");
+    return;
+  }
+  try {
+    await axios.put(
+      `${API_URL}/bookings/${bookingToUpdate.id}`,
+      { status: newStatus },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setSelectedBooking(null); // Close the detail modal
+    setDate(new Date(date.getTime())); // Refresh calendar data
+  } catch (error) {
+    console.error(`Fehler beim Ändern des Status zu ${newStatus}:`, error);
+    alert(error.response?.data?.msg || "Status konnte nicht geändert werden.");
+    // Keep detail modal open on error
+  }
+};
 
   const handleSelecting = (range) => {
     // This function is called when the user is dragging to select a range.
@@ -409,7 +434,7 @@ function App() {
 
         <BookingConfirmationModal
             isOpen={showBookingModal}
-            onClose={() => setShowBookingModal(false)}
+            onClose={handleModalClose}
             onSubmit={handleModalSubmit}
             initialStartDate={modalStartDate}
             initialEndDate={modalEndDate}
@@ -428,22 +453,35 @@ function App() {
                             </span></p>
                             <p><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
                             <p><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
-                            <div className="mt-6 flex justify-end space-x-4">
-                                {/* Bearbeiten-Button könnte später den Status ändern oder Daten anpassen über PUT-Request */}
-                                <button
-                                    onClick={() => alert("Bearbeitungsfunktion (z.B. Status ändern von Reserviert zu Gebucht) noch nicht implementiert.")}
-                                    className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                                >
-                                    Bearbeiten
-                                </button>
-                                <button onClick={() => setShowConfirmDelete(true)} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>
-                                <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Schließen</button>
+                            <div className="mt-6 flex justify-between items-center">
+                                <div> {/* Container for status change buttons */}
+                                    {selectedBooking.status === 'reserved' && (
+                                        <button
+                                            onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')}
+                                            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
+                                        >
+                                            Zu Buchung ändern
+                                        </button>
+                                    )}
+                                    {selectedBooking.status === 'booked' && (
+                                        <button
+                                            onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')}
+                                            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 mr-2"
+                                        >
+                                            Zu Reservierung ändern
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex space-x-4"> {/* Container for existing buttons */}
+                                    <button onClick={() => setShowConfirmDelete(true)} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>
+                                    <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Schließen</button>
+                                </div>
                             </div>
                         </>
                     ) : (
                         <>
                             <h3 className="text-xl font-bold mb-4">Löschen bestätigen</h3>
-                            <p>Möchten Sie diese Buchung wirklich unwiderruflich löschen?</p>
+                            <p>Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'} wirklich unwiderruflich löschen?</p>
                             <div className="mt-6 flex justify-end space-x-4">
                                 <button onClick={handleDeleteBooking} className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800">Ja, löschen</button>
                                 <button onClick={() => setShowConfirmDelete(false)} className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Nein, abbrechen</button>

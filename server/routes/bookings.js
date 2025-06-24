@@ -36,11 +36,25 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     // 2. Überschneidungsprüfung (nur für 'booked' Status, 'reserved' darf sich überschneiden oder auch nicht, je nach Anforderung)
-    // Für dieses Beispiel: Überschneidungsprüfung für beide Status. Anpassen falls Reservierungen Überschneidungen erlauben sollen.
-    const existingBooking = await Booking.findOne({
+    // 2. Verfeinerte Überschneidungsprüfung
+    const finalStatus = status || 'booked'; // Status, den die neue Buchung haben wird
+
+    // Jede neue Buchung (booked oder reserved) darf keine bestehende 'booked' Buchung überschneiden.
+    // Eine neue 'booked' Buchung darf zusätzlich keine bestehende 'reserved' Buchung überschneiden.
+    // -> Einfacher: Wenn finalStatus 'booked', prüfe gegen alle. Wenn finalStatus 'reserved', prüfe nur gegen 'booked'.
+
+    let conflictCheckFilter = {};
+    if (finalStatus === 'booked') {
+        // Eine neue 'booked' Buchung darf weder bestehende 'booked' noch 'reserved' überschneiden.
+        // Also keine zusätzliche Filterung nach Status für bestehende Buchungen.
+    } else { // finalStatus === 'reserved'
+        // Eine neue 'reserved' Buchung darf nur bestehende 'booked' nicht überschneiden.
+        conflictCheckFilter.status = 'booked';
+    }
+
+    const conflictingBooking = await Booking.findOne({
       where: {
-        // Nur prüfen gegen 'booked' Buchungen oder alle? Annahme: gegen alle.
-        // status: 'booked', // Optional: Nur gegen 'booked' prüfen
+        ...conflictCheckFilter, // Filtert ggf. nach status: 'booked' für bestehende Buchungen
         [Op.or]: [
           { startDate: { [Op.between]: [startDate, endDate] } },
           { endDate: { [Op.between]: [startDate, endDate] } },
@@ -52,11 +66,16 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     });
 
-    if (existingBooking) {
-      // Hier könnte man noch prüfen, ob die bestehende Buchung 'reserved' ist und die neue 'booked' oder umgekehrt,
-      // um ggf. eine Reservierung durch eine feste Buchung "überstimmen" zu lassen.
-      // Fürs Erste: Jede Überschneidung ist ein Konflikt.
-      return res.status(400).json({ msg: 'Der ausgewählte Zeitraum ist bereits belegt oder reserviert.' });
+    if (conflictingBooking) {
+      let message = 'Der ausgewählte Zeitraum überschneidet sich mit einer bestehenden ';
+      if (finalStatus === 'booked' && conflictingBooking.status === 'reserved') {
+        message += 'Reservierung.';
+      } else if (finalStatus === 'booked' && conflictingBooking.status === 'booked') {
+        message += 'Buchung.';
+      } else { // finalStatus === 'reserved' (kann nur mit 'booked' kollidieren)
+        message += 'Buchung.';
+      }
+      return res.status(400).json({ msg: message });
     }
 
     // 3. Neue Buchung erstellen
@@ -65,7 +84,7 @@ router.post('/', authMiddleware, async (req, res) => {
       endDate,
       userId,
       displayName,
-      status: status || 'booked', // Fallback auf 'booked', falls kein Status mitgegeben wird
+      status: finalStatus,
     });
 
     res.status(201).json(newBooking);
@@ -130,35 +149,58 @@ router.put('/:id', authMiddleware, async (req, res) => {
             return res.status(400).json({ msg: 'Bei Datumsänderung müssen Start- und Enddatum angegeben werden.' });
         }
 
-        // Überschneidungsprüfung, falls Daten geändert werden oder Status auf 'booked' wechselt
-        if ((startDate && endDate) || (status === 'booked' && booking.status === 'reserved')) {
-            const checkStartDate = startDate || booking.startDate;
-            const checkEndDate = endDate || booking.endDate;
+        const newStartDate = startDate || booking.startDate;
+        const newEndDate = endDate || booking.endDate;
+        const newStatus = status || booking.status;
 
-            const existingBooking = await Booking.findOne({
+        // Überschneidungsprüfung, falls Daten geändert werden oder Status von 'reserved' zu 'booked' wechselt
+        let performOverlapCheck = false;
+        if (startDate || endDate) { // Dates are changing
+            performOverlapCheck = true;
+        } else if (newStatus === 'booked' && booking.status === 'reserved') { // Status changes R -> B
+            performOverlapCheck = true;
+        }
+
+        if (performOverlapCheck) {
+            let conflictCheckFilter = { id: { [Op.ne]: bookingId } }; // Exclude self
+            if (newStatus === 'booked') {
+                // Check against all other bookings (both 'booked' and 'reserved')
+            } else { // newStatus === 'reserved'
+                // Check only against other 'booked' bookings
+                conflictCheckFilter.status = 'booked';
+            }
+
+            const conflictingBooking = await Booking.findOne({
                 where: {
-                    id: { [Op.ne]: bookingId }, // Schließe die aktuelle Buchung von der Prüfung aus
-                    // Ggf. weitere Filter, z.B. nur gegen andere 'booked' Buchungen prüfen
+                    ...conflictCheckFilter,
                     [Op.or]: [
-                        { startDate: { [Op.between]: [checkStartDate, checkEndDate] } },
-                        { endDate: { [Op.between]: [checkStartDate, checkEndDate] } },
+                        { startDate: { [Op.between]: [newStartDate, newEndDate] } },
+                        { endDate: { [Op.between]: [newStartDate, newEndDate] } },
                         { [Op.and]: [
-                            { startDate: { [Op.lte]: checkStartDate } },
-                            { endDate: { [Op.gte]: checkEndDate } }
+                            { startDate: { [Op.lte]: newStartDate } },
+                            { endDate: { [Op.gte]: newEndDate } }
                         ]}
                     ]
                 }
             });
 
-            if (existingBooking) {
-                return res.status(400).json({ msg: 'Der neue Zeitraum überschneidet sich mit einer bestehenden Buchung.' });
+            if (conflictingBooking) {
+                let message = 'Der Zeitraum der Aktualisierung überschneidet sich mit einer bestehenden ';
+                if (newStatus === 'booked' && conflictingBooking.status === 'reserved') {
+                    message += 'Reservierung.';
+                } else if (newStatus === 'booked' && conflictingBooking.status === 'booked') {
+                    message += 'Buchung.';
+                } else { // newStatus === 'reserved' (kann nur mit 'booked' kollidieren)
+                    message += 'Buchung.';
+                }
+                return res.status(400).json({ msg: message });
             }
         }
 
         // Update der Buchung
-        booking.startDate = startDate || booking.startDate;
-        booking.endDate = endDate || booking.endDate;
-        booking.status = status || booking.status;
+        booking.startDate = newStartDate;
+        booking.endDate = newEndDate;
+        booking.status = newStatus;
 
         await booking.save();
         res.json(booking);

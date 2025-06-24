@@ -25,11 +25,11 @@ const Booking = sequelize.define('Booking', {
   },
   status: { // Hinzugefügtes Feld für den Buchungsstatus
     type: DataTypes.STRING,
-    allowNull: true, // Temporarily allow null for diagnostics
+    allowNull: false, // Wieder auf false gesetzt
     defaultValue: 'booked',
-    // validate: { // Temporarily remove validation for diagnostics
-    //   isIn: [['booked', 'reserved']],
-    // },
+    validate: { // Validierung reaktiviert
+      isIn: [['booked', 'reserved']],
+    },
   },
   userId: {
     type: DataTypes.INTEGER,
