@@ -7,8 +7,10 @@
   overflow: auto; /* Handle content exceeding dimensions */
   background-color: white; /* Distinct background for #root */
   /* Ensure #root doesn't shrink smaller than its content if possible, up to max-width/height */
-  width: auto; /* Or consider width: 100% if you want it to try to fill parent up to max-width */
-  height: auto; /* Or consider height: 100% if you want it to try to fill parent up to max-height */
+  width: 1920px; /* Fixed width */
+  height: 1080px; /* Fixed height */
+  max-width: 1920px; /* Keep for viewport smaller than dimensions */
+  max-height: 1080px; /* Keep for viewport smaller than dimensions */
   /* Adding border for visual debugging */
   border: 2px solid red;
 }
