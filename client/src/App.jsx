@@ -129,7 +129,28 @@ function App() {
           };
         });
 
-        setEvents([...formattedBookings, ...formattedPublicHolidays, ...formattedSchoolHolidays]);
+        const allEvents = [...formattedBookings, ...formattedPublicHolidays, ...formattedSchoolHolidays];
+
+        // Sort events: public holidays first, then bookings, then school holidays
+        allEvents.sort((a, b) => {
+          const typeOrder = {
+            publicHoliday: 1,
+            booking: 2, // Assuming 'booking' is the type for bookings
+            schoolHoliday: 3,
+          };
+
+          const orderA = typeOrder[a.type] || 99; // Default for unknown types
+          const orderB = typeOrder[b.type] || 99;
+
+          if (orderA !== orderB) {
+            return orderA - orderB;
+          }
+
+          // Optional: secondary sort by start date if types are the same
+          return new Date(a.start) - new Date(b.start);
+        });
+
+        setEvents(allEvents);
       } catch (error) {
         console.error("Fehler beim Laden der Kalenderdaten:", error);
       }
