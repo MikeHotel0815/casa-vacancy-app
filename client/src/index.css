@@ -8,10 +8,9 @@ html, body {
   margin: 0;      /* Remove default margins */
   padding: 0;     /* Remove default padding */
   background-color: lightgrey; /* Distinct background for body */
-  /* To ensure #root can be centered and max-height respected */
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  /* display: flex;  Removed for testing */
+  /* justify-content: center; Removed for testing */
+  /* align-items: center; Removed for testing */
 }
 
 /* Ensure #root can take up space within the flex container if needed,

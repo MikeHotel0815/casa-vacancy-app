@@ -1,7 +1,7 @@
 #root {
   max-width: 1920px;
   max-height: 1080px;
-  /* margin: 0 auto; /* No longer needed if body is flex centering */
+  margin: 0 auto; /* Added back for centering */
   padding: 2rem;
   text-align: center;
   overflow: auto; /* Handle content exceeding dimensions */
