@@ -75,6 +75,7 @@ function App() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [modalStartDate, setModalStartDate] = useState(null);
   const [modalEndDate, setModalEndDate] = useState(null);
+  const [ignoreNextCalendarClick, setIgnoreNextCalendarClick] = useState(false);
 
 
   // --- EFFECTS ---
@@ -152,6 +153,11 @@ function App() {
   };
 
   const handleSelectSlot = ({ start, end, action }) => {
+    if (ignoreNextCalendarClick) {
+      setIgnoreNextCalendarClick(false); // Reset the flag
+      return;
+    }
+
     if (action === 'select') { // User finished a drag operation
       setSelectionStart(start);
       setSelectionEnd(end);
@@ -188,8 +194,10 @@ function App() {
     if (!token) {
       alert("Bitte melden Sie sich an.");
       setShowBookingModal(false);
-    setSelectionStart(null); // Clear selection on auth error before modal closes
-    setSelectionEnd(null);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      setIgnoreNextCalendarClick(true);
+      setTimeout(() => setIgnoreNextCalendarClick(false), 50);
       return;
     }
     try {
@@ -198,12 +206,16 @@ function App() {
         {
           startDate: format(newStartDate, 'yyyy-MM-dd'),
           endDate: format(newEndDate, 'yyyy-MM-dd'),
-        status: type
+          status: type
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setShowBookingModal(false);
-    setDate(new Date(date.getTime()));
+      setDate(new Date(date.getTime()));
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      setIgnoreNextCalendarClick(true);
+      setTimeout(() => setIgnoreNextCalendarClick(false), 50);
     } catch (error) {
       console.error(`Fehler beim ${type === 'booked' ? 'Buchen' : 'Reservieren'}:`, error);
       alert(error.response?.data?.msg || `Buchung/Reservierung konnte nicht erstellt werden.`);
@@ -215,8 +227,18 @@ function App() {
 
 const handleModalClose = () => {
   setShowBookingModal(false);
-  setSelectionStart(null); // Clear selection when modal is explicitly closed
+  setSelectionStart(null);
   setSelectionEnd(null);
+  setIgnoreNextCalendarClick(true);
+  // It's safer to reset ignoreNextCalendarClick in handleSelectSlot
+  // or use a very short timeout if clicks outside calendar are possible ways to close modal.
+  // For now, if handleSelectSlot is the only way a day gets selected, resetting it there is fine.
+  // If modal can be closed by other means not involving a calendar click (e.g. ESC key),
+  // then a timeout here would be more robust for resetting the flag.
+  // Let's assume backdrop or cancel button click are main methods.
+  // If click is on backdrop NOT on a calendar cell, handleSelectSlot won't fire.
+  // So, a timeout is indeed more robust.
+  setTimeout(() => setIgnoreNextCalendarClick(false), 50);
 };
 
 const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
