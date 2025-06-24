@@ -242,8 +242,8 @@ function App() {
       );
       setShowBookingModal(false);
       setDate(new Date(date.getTime()));
-      // setSelectionStart(null); // Keep selection for visual feedback until next user interaction
-      // setSelectionEnd(null);   // Keep selection for visual feedback until next user interaction
+      setSelectionStart(null); // Clear selection after successful booking/reservation
+      setSelectionEnd(null);   // Clear selection after successful booking/reservation
       setIgnoreNextCalendarClick(true);
       setTimeout(() => setIgnoreNextCalendarClick(false), 50);
     } catch (error) {
@@ -257,8 +257,8 @@ function App() {
 
 const handleModalClose = () => {
   setShowBookingModal(false);
-  // setSelectionStart(null); // Keep selection for visual feedback
-  // setSelectionEnd(null);   // Keep selection for visual feedback
+  setSelectionStart(null); // Clear selection when modal is closed
+  setSelectionEnd(null);   // Clear selection when modal is closed
   setIgnoreNextCalendarClick(true);
   // It's safer to reset ignoreNextCalendarClick in handleSelectSlot
   // or use a very short timeout if clicks outside calendar are possible ways to close modal.
@@ -359,13 +359,13 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
     let style = {};
     if (selectionStart && !selectionEnd) { // Only start is selected, waiting for end
       if (currentDate.getTime() === normSelectionStart.getTime()) {
-        style.backgroundColor = 'rgba(100, 149, 237, 0.5)'; // Cornflower blue for start, 50% opacity
+        style.backgroundColor = 'rgba(255, 255, 0, 0.3)'; // Yellow for start, 30% opacity
         style.borderRadius = '5px';
       }
     } else if (selectionStart && selectionEnd) { // Both start and end are defined (during drag or after second click before booking)
       const normSelectionEnd = normalizeDate(selectionEnd);
       if (currentDate >= normSelectionStart && currentDate <= normSelectionEnd) {
-        style.backgroundColor = 'rgba(100, 149, 237, 0.7)'; // Cornflower blue for range, 70% opacity
+        style.backgroundColor = 'rgba(255, 255, 0, 0.5)'; // Yellow for range, 50% opacity
         if (currentDate.getTime() === normSelectionStart.getTime()) {
           style.borderTopLeftRadius = '5px';
           style.borderBottomLeftRadius = '5px';
