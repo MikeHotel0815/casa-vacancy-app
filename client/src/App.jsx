@@ -142,10 +142,19 @@ function App() {
     const fetchAllEvents = async () => {
       try {
         const year = date.getFullYear();
+
+        const bookingsPromise = axios.get(`${API_URL}/bookings`);
+        const publicHolidaysPromise = axios.get(`${API_URL}/holidays/public/HE?year=${year}`);
+        const schoolHolidaysPromise = axios.get(`${API_URL}/holidays/school/HE?year=${year}`)
+          .catch(error => {
+            console.warn(`Warning: Failed to load school holidays for year ${year}. Displaying calendar without them. Error:`, error.message);
+            return { data: [] }; // Return an empty array structure to prevent downstream errors
+          });
+
         const [bookingsRes, publicHolidaysRes, schoolHolidaysRes] = await Promise.all([
-          axios.get(`${API_URL}/bookings`),
-          axios.get(`${API_URL}/holidays/public/HE?year=${year}`),
-          axios.get(`${API_URL}/holidays/school/HE?year=${year}`)
+          bookingsPromise,
+          publicHolidaysPromise,
+          schoolHolidaysPromise // This will now resolve with { data: [] } if the original fetch failed
         ]);
 
         const formattedBookings = bookingsRes.data.map(booking => ({
