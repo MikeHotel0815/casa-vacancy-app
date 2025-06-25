@@ -428,31 +428,50 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   // };
 
   const dayPropGetter = (date) => {
-    if (!selectionStart) {
-      return {};
-    }
     // Normalize date to remove time part for accurate comparison
     const normalizeDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const currentDate = normalizeDate(date);
-    const normSelectionStart = normalizeDate(selectionStart);
-
     let style = {};
-    if (selectionStart && !selectionEnd) { // Only start is selected, waiting for end
-      if (currentDate.getTime() === normSelectionStart.getTime()) {
-        style.backgroundColor = 'rgba(255, 255, 0, 0.3)'; // Yellow for start, 30% opacity
-        style.borderRadius = '5px';
+
+    // Check for holidays
+    const isHoliday = events.some(event => {
+      if (event.type === 'publicHoliday' || event.type === 'schoolHoliday') {
+        const holidayStart = normalizeDate(new Date(event.start));
+        const holidayEnd = normalizeDate(new Date(event.end));
+        return currentDate >= holidayStart && currentDate <= holidayEnd;
       }
-    } else if (selectionStart && selectionEnd) { // Both start and end are defined (during drag or after second click before booking)
-      const normSelectionEnd = normalizeDate(selectionEnd);
-      if (currentDate >= normSelectionStart && currentDate <= normSelectionEnd) {
-        style.backgroundColor = 'rgba(255, 255, 0, 0.5)'; // Yellow for range, 50% opacity
+      return false;
+    });
+
+    if (isHoliday) {
+      style.backgroundColor = 'rgba(229, 231, 235, 0.8)'; // Light gray (Tailwind gray-200 at 80% opacity)
+    }
+
+    // Apply selection styling - this will override holiday background if a day is selected
+    if (selectionStart) {
+      const normSelectionStart = normalizeDate(selectionStart);
+      if (selectionStart && !selectionEnd) { // Only start is selected, waiting for end
         if (currentDate.getTime() === normSelectionStart.getTime()) {
-          style.borderTopLeftRadius = '5px';
-          style.borderBottomLeftRadius = '5px';
+          style.backgroundColor = 'rgba(250, 204, 21, 0.4)'; // Yellow for start (Tailwind yellow-400 at 40% opacity)
+          style.borderRadius = '5px';
         }
-        if (currentDate.getTime() === normSelectionEnd.getTime()) {
-          style.borderTopRightRadius = '5px';
-          style.borderBottomRightRadius = '5px';
+      } else if (selectionStart && selectionEnd) { // Both start and end are defined
+        const normSelectionEnd = normalizeDate(selectionEnd);
+        if (currentDate >= normSelectionStart && currentDate <= normSelectionEnd) {
+          style.backgroundColor = 'rgba(250, 204, 21, 0.6)'; // More opaque Yellow for range (Tailwind yellow-400 at 60% opacity)
+          if (currentDate.getTime() === normSelectionStart.getTime()) {
+            style.borderTopLeftRadius = '5px';
+            style.borderBottomLeftRadius = '5px';
+          }
+          if (currentDate.getTime() === normSelectionEnd.getTime()) {
+            style.borderTopRightRadius = '5px';
+            style.borderBottomRightRadius = '5px';
+          }
+          // Ensure continuous selection appearance if holiday and selection overlap
+          if (isHoliday) {
+             // Make selection more prominent on holidays
+            style.boxShadow = 'inset 0 0 0 2px rgba(245, 158, 11, 0.7)'; // Tailwind yellow-500 border inset
+          }
         }
       }
     }
@@ -481,13 +500,17 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
           style.fontWeight = 'normal';
         }
         break;
-      case 'publicHoliday':
+      case 'publicHoliday': // This case is not strictly necessary for event styling if events are filtered out
         style.backgroundColor = '#2563eb'; // Blue
         style.zIndex = 10; // Ensure public holidays are on top
+        // Note: publicHolidays are filtered out from the main event list for <Calendar />
+        // Their names are shown via CustomDateHeader, and day background via dayPropGetter.
         break;
       case 'schoolHoliday':
-        style.backgroundColor = '#e0e0e0'; // Light gray
-        style.color = 'black'; // Black text
+        style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // White, slightly transparent background
+        style.color = '#4b5563'; // Darker gray text (Tailwind gray-600)
+        style.border = '1px solid #d1d5db'; // Light gray border (Tailwind gray-300)
+        style.opacity = 1; // Reset opacity if it was previously lowered globally for events
         break;
       default:
         style.backgroundColor = '#64748b'; // Slate
