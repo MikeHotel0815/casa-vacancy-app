@@ -535,7 +535,7 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   return (
     <>
         {/* Hauptinhalts-Container mit vereinfachtem Layout */}
-        <div className="p-4 md:p-8 h-screen flex flex-col bg-gray-50">
+        <div className="p-4 md:p-8 h-screen flex flex-col bg-gray-50 max-w-[1920px] max-h-[1080px] mx-auto">
             <header className="flex justify-between items-center mb-4">
                 <h1 className="text-3xl font-bold text-gray-800">Belegungskalender</h1>
                 <div>
