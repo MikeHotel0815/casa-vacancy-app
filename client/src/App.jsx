@@ -33,7 +33,7 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
 
     holidayDisplaySpan = (
       <span
-        className="text-xs text-blue-700 whitespace-normal" // Allow wrapping, remove overflow/ellipsis from here
+        className="text-xs text-[rgba(37,99,235,0.65)] whitespace-normal" // blue-700 at 65% opacity
         title={tooltipTitle}
       >
         {fullHolidayTitle}
@@ -523,7 +523,7 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
             <div className="flex-grow" ref={calendarRef}> {/* Attach ref here */}
                 <Calendar
                     localizer={localizer}
-                    events={events}
+                    events={events.filter(event => event.type !== 'publicHoliday')}
                     startAccessor="start"
                     endAccessor="end"
                     selectable
