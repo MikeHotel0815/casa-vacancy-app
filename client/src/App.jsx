@@ -9,6 +9,45 @@ import getDay from 'date-fns/getDay';
 import de from 'date-fns/locale/de';
 import subDays from 'date-fns/subDays';
 
+// Helper function to check if two dates are the same day
+const isSameDay = (date1, date2) => {
+  if (!date1 || !date2) return false;
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+};
+
+// Custom Date Header Component
+const CustomDateHeader = ({ date, label, allEvents }) => {
+  // Ensure allEvents is an array and date is valid before processing
+  const publicHolidays = Array.isArray(allEvents) ? allEvents.filter(event =>
+    event.type === 'publicHoliday' && event.start && isSameDay(new Date(event.start), date)
+  ) : [];
+
+  let holidayDisplay = null;
+  if (publicHolidays.length > 0) {
+    // Attempt to display the first word of the first holiday, max 10 chars for very long words
+    const firstHolidayTitle = publicHolidays[0].title.split(' ')[0].substring(0, 10);
+    holidayDisplay = (
+      <span
+        className="text-xs text-blue-700 mr-1 overflow-hidden whitespace-nowrap text-ellipsis flex-shrink min-w-0"
+        title={publicHolidays.map(h => h.title).join(', ')}
+        style={{ flexBasis: 'auto', flexShrink: 1, minWidth: '0px' }} // Ensure it can shrink
+      >
+        {firstHolidayTitle}
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-start h-full w-full overflow-hidden"> {/* Ensure container allows shrinking */}
+      {holidayDisplay}
+      {/* Push label to the right if holiday text is present, otherwise it's at the start */}
+      <span className={`rbc-date-cell-label ${holidayDisplay ? 'ml-auto' : ''}`}>{label}</span>
+    </div>
+  );
+};
+
 // Komponenten importieren
 import Login from './components/Login';
 import Register from './components/Register';
@@ -492,6 +531,9 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
                     dayPropGetter={dayPropGetter} // Added dayPropGetter
                     onSelecting={handleSelecting} // Added onSelecting
                     // selectable={true} // Duplicate removed, already present above
+                    components={{
+                      month: { dateHeader: (props) => <CustomDateHeader {...props} allEvents={events} /> }
+                    }}
                     style={{ height: '100%' }}
                 />
             </div>
