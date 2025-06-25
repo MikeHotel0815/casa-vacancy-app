@@ -24,31 +24,35 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
     event.type === 'publicHoliday' && event.start && isSameDay(new Date(event.start), date)
   ) : [];
 
-  let holidayDisplay = null;
+  let holidayDisplaySpan = null;
   if (publicHolidays.length > 0) {
-    // Attempt to display the first word of the first holiday, max 10 chars for very long words
-    const firstHolidayTitle = publicHolidays[0].title.split(' ')[0].substring(0, 10);
-    holidayDisplay = (
+    // Display the full title of the first public holiday
+    const fullHolidayTitle = publicHolidays[0].title;
+    // Tooltip will show all holidays if there are multiple on the same day
+    const tooltipTitle = publicHolidays.map(h => h.title).join(', ');
+
+    holidayDisplaySpan = (
       <span
-        className="text-xs text-blue-700 mr-1 overflow-hidden whitespace-nowrap text-ellipsis flex-shrink min-w-0"
-        title={publicHolidays.map(h => h.title).join(', ')}
-        style={{ flexBasis: 'auto', flexShrink: 1, minWidth: '0px' }} // Ensure it can shrink
+        className="text-xs text-blue-700 whitespace-normal" // Allow wrapping, remove overflow/ellipsis from here
+        title={tooltipTitle}
       >
-        {firstHolidayTitle}
+        {fullHolidayTitle}
       </span>
     );
   }
 
   return (
-    <div className="flex items-center h-full w-full overflow-hidden">
+    <div className="flex items-start h-full w-full overflow-hidden pt-1"> {/* items-start for vertical alignment if text wraps, added padding top */}
       <span className="rbc-date-cell-label flex-shrink-0 mr-1">{label}</span>
-      {holidayDisplay && (
-        <div className="flex-grow overflow-hidden" style={{ flexBasis: '90%' }}>
-          {/* holidayDisplay itself is already a span with truncation,
-              this div wrapper helps control its growth basis relative to the date label.
-              The inner span handles the actual text styling and ellipsis.
+      {holidayDisplaySpan && (
+        <div className="flex-grow overflow-auto" style={{ flexBasis: '90%', maxHeight: '3em' }}>
+          {/*
+            flex-grow allows it to take space.
+            overflow-auto on this div will show a scrollbar if content exceeds maxHeight.
+            maxHeight is a suggestion to prevent extreme cell height, adjust as needed.
+            The inner span (holidayDisplaySpan) will wrap its text.
           */}
-          {holidayDisplay}
+          {holidayDisplaySpan}
         </div>
       )}
     </div>
