@@ -40,10 +40,17 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
   }
 
   return (
-    <div className="flex items-center justify-start h-full w-full overflow-hidden"> {/* Ensure container allows shrinking */}
-      {holidayDisplay}
-      {/* Push label to the right if holiday text is present, otherwise it's at the start */}
-      <span className={`rbc-date-cell-label ${holidayDisplay ? 'ml-auto' : ''}`}>{label}</span>
+    <div className="flex items-center h-full w-full overflow-hidden">
+      <span className="rbc-date-cell-label flex-shrink-0 mr-1">{label}</span>
+      {holidayDisplay && (
+        <div className="flex-grow overflow-hidden" style={{ flexBasis: '90%' }}>
+          {/* holidayDisplay itself is already a span with truncation,
+              this div wrapper helps control its growth basis relative to the date label.
+              The inner span handles the actual text styling and ellipsis.
+          */}
+          {holidayDisplay}
+        </div>
+      )}
     </div>
   );
 };
