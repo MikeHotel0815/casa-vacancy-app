@@ -509,11 +509,9 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
         const publicHolidayBgColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
         // Apply with some transparency to differentiate from event block
         style.backgroundColor = hexToRgba(publicHolidayBgColor, 0.3);
-    } else if (isSchoolHoliday) { // else if, so public holidays take precedence
-        const schoolHolidayBgColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#d1d5db';
-        // Apply with some transparency
-        style.backgroundColor = hexToRgba(schoolHolidayBgColor, 0.3);
     }
+    // Removed the 'else if (isSchoolHoliday)' block to prevent school holiday day background coloring.
+    // School holiday event blocks will still be colored by eventStyleGetter.
 
     // Apply selection styling - this will override holiday background if a day is selected
     if (selectionStart) {
