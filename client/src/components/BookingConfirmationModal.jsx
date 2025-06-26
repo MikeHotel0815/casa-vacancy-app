@@ -15,7 +15,7 @@ const ModalDialog = ({ children, onClose }) => (
     <div
       style={{
         backgroundColor: 'white', padding: '20px', borderRadius: '8px',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.1)', minWidth: '300px', maxWidth: '500px'
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)', minWidth: '300px', maxWidth: '600px' // Increased maxWidth
       }}
       onClick={e => e.stopPropagation()} // Prevent modal close when clicking inside modal content
     >

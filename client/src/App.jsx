@@ -812,7 +812,8 @@ const handleUpdateBookingAdmin = async () => {
 
       {appView === 'calendar' && selectedBooking && (
         <Modal>
-          <div className="card-custom max-w-md mx-4"> {/* Apply card style to modal content */}
+          {/* Changed max-w-md to max-w-xl for admin edit view, kept max-w-md for user view and delete confirmation */}
+          <div className={`card-custom mx-4 ${user && user.isAdmin && !showConfirmDelete ? 'max-w-xl' : 'max-w-md'}`}>
             {!showConfirmDelete ? (
               <>
                 <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
