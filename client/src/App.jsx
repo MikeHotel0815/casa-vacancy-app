@@ -812,115 +812,86 @@ const handleUpdateBookingAdmin = async () => {
 
       {appView === 'calendar' && selectedBooking && (
         <Modal>
-          {/* Using explicit widths with w-[value] and ensuring it's part of card-custom for consistent padding/shadow */}
+          {/* Aggressively using explicit widths with w-[value] and ensuring it's part of card-custom for consistent padding/shadow */}
           <div
-            className={`card-custom mx-4 ${
+            className={`card-custom mx-4 min-h-[400px] flex flex-col ${
               user && user.isAdmin && !showConfirmDelete
-                ? 'w-[640px] max-w-[90vw]' // Wider for admin edit (e.g., 640px, but responsive)
-                : 'w-[480px] max-w-[90vw]' // Standard for user view / delete confirm
+                ? 'w-[800px] max-w-[95vw]' // Wider for admin edit
+                : 'w-[600px] max-w-[95vw]' // Wider for user view / delete confirm
             }`}
           >
-            {!showConfirmDelete ? (
-              <>
-                <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
-                {/* Admin-specific editing fields */}
-                {user && user.isAdmin ? (
-                  <>
-                    <div className="mb-4">
-                      <label htmlFor="editBookingUser" className="block text-sm font-medium text-gray-700 mb-1">Benutzer:</label>
-                      <select
-                        id="editBookingUser"
-                        className="input-field"
-                        value={selectedBooking.userId.toString()} // Assuming selectedBooking has userId
-                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, userId: parseInt(e.target.value), displayName: allUsers.find(u => u.id === parseInt(e.target.value))?.displayName || prev.displayName }))}
-                      >
-                        {allUsers.map(u => <option key={u.id} value={u.id.toString()}>{u.displayName}</option>)}
-                      </select>
-                    </div>
-                    <div className="mb-4">
-                      <label htmlFor="editBookingStartDate" className="block text-sm font-medium text-gray-700 mb-1">Startdatum:</label>
-                      <input
-                        type="date"
-                        id="editBookingStartDate"
-                        className="input-field"
-                        value={format(selectedBooking.start, 'yyyy-MM-dd')}
-                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, start: new Date(e.target.value) }))}
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label htmlFor="editBookingEndDate" className="block text-sm font-medium text-gray-700 mb-1">Enddatum:</label>
-                      <input
-                        type="date"
-                        id="editBookingEndDate"
-                        className="input-field"
-                        value={format(selectedBooking.end, 'yyyy-MM-dd')}
-                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, end: new Date(e.target.value) }))}
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label htmlFor="editBookingStatus" className="block text-sm font-medium text-gray-700 mb-1">Status:</label>
-                      <select
-                        id="editBookingStatus"
-                        className="input-field"
-                        value={selectedBooking.status}
-                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, status: e.target.value }))}
-                      >
-                        <option value="booked">Gebucht</option>
-                        <option value="reserved">Reserviert</option>
-                      </select>
-                    </div>
-                    <div className="mt-6 flex justify-end space-x-2">
-                      <button onClick={() => handleUpdateBookingAdmin()} className="btn btn-primary">Änderungen speichern</button>
-                      <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
-                      <button onClick={() => { setSelectedBooking(null); fetchAllEvents(); /* Refetch to discard local changes */ }} className="btn btn-secondary">Schließen</button>
-                    </div>
-                  </>
-                ) : (
-                  // Regular user view (existing logic)
-                  <>
-                    <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
-                    <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-yellow-600' : 'text-red-700'}`}>
-                      {selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}
-                    </span></p>
-                    <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
-                    <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
-                    <div className="mt-6 flex flex-wrap justify-between items-center gap-2">
-                      <div>
-                        {selectedBooking.status === 'reserved' && (
-                          <button
-                            onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')}
-                            className="btn bg-green-500 hover:bg-green-600 text-white"
-                          >
-                            Zu Buchung ändern
-                          </button>
-                        )}
-                        {selectedBooking.status === 'booked' && (
-                          <button
-                            onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')}
-                            className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
-                          >
-                            Zu Reservierung ändern
-                          </button>
-                        )}
+            {/* Scrollable Content Area */}
+            <div className="flex-grow overflow-y-auto pb-4 pr-2"> {/* Added pb-4 for bottom padding before buttons, pr-2 for scrollbar */}
+              {!showConfirmDelete ? (
+                <>
+                  <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
+                  {user && user.isAdmin ? (
+                    // Admin Edit Fields
+                    <>
+                      <div className="mb-4">
+                        <label htmlFor="editBookingUser" className="block text-sm font-medium text-gray-700 mb-1">Benutzer:</label>
+                        <select id="editBookingUser" className="input-field" value={selectedBooking.userId.toString()} onChange={(e) => setSelectedBooking(prev => ({ ...prev, userId: parseInt(e.target.value), displayName: allUsers.find(u => u.id === parseInt(e.target.value))?.displayName || prev.displayName }))}>
+                          {allUsers.map(u => <option key={u.id} value={u.id.toString()}>{u.displayName}</option>)}
+                        </select>
                       </div>
-                      <div className="flex space-x-2">
-                        <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
-                        <button onClick={() => setSelectedBooking(null)} className="btn btn-secondary">Schließen</button>
+                      <div className="mb-4">
+                        <label htmlFor="editBookingStartDate" className="block text-sm font-medium text-gray-700 mb-1">Startdatum:</label>
+                        <input type="date" id="editBookingStartDate" className="input-field" value={format(selectedBooking.start, 'yyyy-MM-dd')} onChange={(e) => setSelectedBooking(prev => ({ ...prev, start: new Date(e.target.value) }))} />
                       </div>
+                      <div className="mb-4">
+                        <label htmlFor="editBookingEndDate" className="block text-sm font-medium text-gray-700 mb-1">Enddatum:</label>
+                        <input type="date" id="editBookingEndDate" className="input-field" value={format(selectedBooking.end, 'yyyy-MM-dd')} onChange={(e) => setSelectedBooking(prev => ({ ...prev, end: new Date(e.target.value) }))} />
+                      </div>
+                      <div className="mb-4">
+                        <label htmlFor="editBookingStatus" className="block text-sm font-medium text-gray-700 mb-1">Status:</label>
+                        <select id="editBookingStatus" className="input-field" value={selectedBooking.status} onChange={(e) => setSelectedBooking(prev => ({ ...prev, status: e.target.value }))}>
+                          <option value="booked">Gebucht</option>
+                          <option value="reserved">Reserviert</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    // Regular User View Fields
+                    <>
+                      <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
+                      <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-yellow-600' : 'text-red-700'}`}>{selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}</span></p>
+                      <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
+                      <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
+                    </>
+                  )}
+                </>
+              ) : (
+                // Delete Confirmation View
+                <>
+                  <h3 className="text-2xl font-bold mb-4 text-gray-800">Löschen bestätigen</h3>
+                  <p className="mb-6">Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'} wirklich unwiderruflich löschen?</p>
+                </>
+              )}
+            </div>
+
+            {/* Buttons section - sticky at the bottom */}
+            <div className="mt-auto pt-4 border-t border-gray-200">
+              {!showConfirmDelete ? (
+                <div className={`flex ${user && user.isAdmin ? 'justify-end' : 'justify-between items-center'} space-x-2`}>
+                  {user && !user.isAdmin && (
+                    <div>
+                      {selectedBooking.status === 'reserved' && <button onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')} className="btn bg-green-500 hover:bg-green-600 text-white">Zu Buchung ändern</button>}
+                      {selectedBooking.status === 'booked' && <button onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')} className="btn bg-yellow-500 hover:bg-yellow-600 text-white">Zu Reservierung ändern</button>}
                     </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <h3 className="text-2xl font-bold mb-4 text-gray-800">Löschen bestätigen</h3>
-                <p className="mb-6">Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'} wirklich unwiderruflich löschen?</p>
-                <div className="mt-6 flex justify-end space-x-3">
+                  )}
+                  <div className="flex space-x-2">
+                    {user && user.isAdmin && <button onClick={() => handleUpdateBookingAdmin()} className="btn btn-primary">Änderungen speichern</button>}
+                    <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
+                    <button onClick={() => { setSelectedBooking(null); if (user && user.isAdmin) fetchAllEvents(); }} className="btn btn-secondary">Schließen</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-end space-x-3">
                   <button onClick={handleDeleteBooking} className="btn bg-red-700 hover:bg-red-800 text-white">Ja, löschen</button>
                   <button onClick={() => setShowConfirmDelete(false)} className="btn btn-secondary">Nein, abbrechen</button>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </Modal>
       )}

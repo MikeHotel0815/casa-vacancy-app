@@ -15,7 +15,10 @@ const ModalDialog = ({ children, onClose }) => (
     <div
       style={{
         backgroundColor: 'white', padding: '20px', borderRadius: '8px',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.1)', minWidth: '300px', maxWidth: '768px' // Increased maxWidth to 768px (like max-w-3xl)
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        minWidth: '300px', maxWidth: '960px', // Aggressively increased maxWidth
+        minHeight: '400px', // Added minHeight
+        overflowY: 'auto' // Ensure scrolling if content overflows vertically
       }}
       onClick={e => e.stopPropagation()} // Prevent modal close when clicking inside modal content
     >
