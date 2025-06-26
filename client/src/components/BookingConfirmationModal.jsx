@@ -15,7 +15,7 @@ const ModalDialog = ({ children, onClose }) => (
     <div
       style={{
         backgroundColor: 'white', padding: '20px', borderRadius: '8px',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.1)', minWidth: '300px', maxWidth: '600px' // Increased maxWidth
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)', minWidth: '300px', maxWidth: '768px' // Increased maxWidth to 768px (like max-w-3xl)
       }}
       onClick={e => e.stopPropagation()} // Prevent modal close when clicking inside modal content
     >
@@ -78,10 +78,9 @@ const BookingConfirmationModal = ({
 
   return (
     <ModalDialog onClose={onClose}>
-      {/* Apply card-custom for consistent padding and shadow, though ModalDialog provides its own */}
-      <div className="p-1"> {/* Minimal padding, ModalDialog has its own structure */}
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Buchung bestätigen oder reservieren</h2> {/* Enhanced heading */}
-        <div className="space-y-4"> {/* Add space between form elements */}
+      <div className="p-4 w-full"> {/* Increased padding and ensured w-full */}
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Buchung bestätigen oder reservieren</h2>
+        <div className="space-y-4">
           <div>
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
               Startdatum:

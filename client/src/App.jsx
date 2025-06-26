@@ -812,8 +812,14 @@ const handleUpdateBookingAdmin = async () => {
 
       {appView === 'calendar' && selectedBooking && (
         <Modal>
-          {/* Changed max-w-md to max-w-xl for admin edit view, kept max-w-md for user view and delete confirmation */}
-          <div className={`card-custom mx-4 ${user && user.isAdmin && !showConfirmDelete ? 'max-w-xl' : 'max-w-md'}`}>
+          {/* Using explicit widths with w-[value] and ensuring it's part of card-custom for consistent padding/shadow */}
+          <div
+            className={`card-custom mx-4 ${
+              user && user.isAdmin && !showConfirmDelete
+                ? 'w-[640px] max-w-[90vw]' // Wider for admin edit (e.g., 640px, but responsive)
+                : 'w-[480px] max-w-[90vw]' // Standard for user view / delete confirm
+            }`}
+          >
             {!showConfirmDelete ? (
               <>
                 <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
