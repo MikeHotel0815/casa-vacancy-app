@@ -53,7 +53,7 @@ function Register({ setView }) {
               id="displayName-reg"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field w-[90%]" // Use global input-field style
               required
               placeholder="Ihr Anzeigename" // Added placeholder
             />
@@ -67,7 +67,7 @@ function Register({ setView }) {
               id="email-reg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field w-[90%]" // Use global input-field style
               required
               placeholder="ihre.email@example.com" // Added placeholder
             />
@@ -75,7 +75,7 @@ function Register({ setView }) {
           <div>
             <label
               htmlFor="password-reg"
-              className="block text-sm font-medium text-gray-700 mb-1" // Added margin-bottom to label
+              className="block text-sm font-medium text-gray-700 mb-1 w-[90%]" // Added margin-bottom to label
             >
               Passwort
             </label>
@@ -84,7 +84,7 @@ function Register({ setView }) {
               id="password-reg"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field w-[90%]" // Use global input-field style
               required
               placeholder="Mindestens 6 Zeichen" // Added placeholder
             />
@@ -101,12 +101,12 @@ function Register({ setView }) {
               id="confirm-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field w-[90%]" // Use global input-field style
               required
               placeholder="Passwort erneut eingeben" // Added placeholder
             />
           </div>
-          <div>
+          <div className="mt-[1rem]">
             <button
               type="submit"
               className="w-full btn btn-primary" // Use global button styles

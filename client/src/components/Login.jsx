@@ -49,7 +49,7 @@ function Login({ onLoginSuccess, setView }) {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field w-[90%]" // Use global input-field style
               required
               placeholder="ihre.email@example.com" // Added placeholder
             />
@@ -66,12 +66,12 @@ function Login({ onLoginSuccess, setView }) {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field w-[90%]" // Use global input-field style
               required
               placeholder="********" // Added placeholder
             />
-          </div>
-          <div>
+            </div>
+            <div className="mt-[1rem]">
             <button
               type="submit"
               className="w-full btn btn-primary" // Use global button styles

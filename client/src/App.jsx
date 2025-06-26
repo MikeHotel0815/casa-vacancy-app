@@ -870,9 +870,9 @@ const handleUpdateBookingAdmin = async () => {
             </div>
 
             {/* Buttons section - sticky at the bottom */}
-            <div className="mt-auto pt-4 border-t border-gray-200">
+            <div className="mt-auto pt-4">
               {!showConfirmDelete ? (
-                <div className={`flex ${user && user.isAdmin ? 'justify-end' : 'justify-between items-center'} space-x-2`}>
+                <div className={`flex ${user && user.isAdmin ? 'justify-center' : 'justify-between items-center'} space-x-2`}>
                   {user && !user.isAdmin && (
                     <div>
                       {selectedBooking.status === 'reserved' && <button onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')} className="btn bg-green-500 hover:bg-green-600 text-white">Zu Buchung ändern</button>}

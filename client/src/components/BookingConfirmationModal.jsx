@@ -128,7 +128,7 @@ const BookingConfirmationModal = ({
             </div>
           )}
         </div>
-        <div className="flex justify-center align-center space-x-3 mt-8"> {/* Increased top margin for button group */}
+        <div className="flex justify-center align-center space-x-3 mt-8 mt-[1rem]"> {/* Increased top margin for button group */}
           <button
             onClick={onClose}
             className="btn btn-secondary" // Use global button styles
