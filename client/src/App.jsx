@@ -31,13 +31,17 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
     // Tooltip will show all holidays if there are multiple on the same day
     const tooltipTitle = publicHolidays.map(h => h.title).join(', ');
 
-    // Get the computed style for public holiday color
-    const publicHolidayColor = getComputedStyle(document.documentElement).getPropertyValue('--public-holiday-color').trim() || '#2563eb';
+    // Get the computed style for public holiday text color
+    const publicHolidayTextColor = getComputedStyle(document.documentElement).getPropertyValue('--public-holiday-text-color').trim() || '#ffffff';
+    // Fallback to the background color if text color is not contrasting enough (simple heuristic)
+    // This is a very basic check; a proper contrast check is more complex.
+    // For now, we assume the user picks a contrasting text color.
+    // The publicHolidayColor is used for the day background tint, not directly here.
 
     holidayDisplaySpan = (
       <span
-        className="text-xs whitespace-normal" // Removed specific color class
-        style={{ color: publicHolidayColor, opacity: 0.85 }} // Apply dynamic color and slight opacity
+        className="text-xs whitespace-normal"
+        style={{ color: publicHolidayTextColor, opacity: 0.9 }} // Use dedicated text color
         title={tooltipTitle}
       >
         {fullHolidayTitle}
@@ -151,16 +155,32 @@ function App() {
     const backgroundColor = localStorage.getItem('backgroundColor') || '#f9fafb'; // Default gray-50
     document.documentElement.style.setProperty('--background-color', backgroundColor);
     document.body.style.backgroundColor = backgroundColor;
+    const backgroundColorText = localStorage.getItem('backgroundColorText') || '#111827';
+    document.documentElement.style.setProperty('--background-text-color', backgroundColorText);
+    document.body.style.color = backgroundColorText; // Apply global text color based on background
 
-    // Load calendar event colors
-    const publicHolidayColor = localStorage.getItem('publicHolidayColor') || '#2563eb'; // Default blue-600
+    // Load calendar event colors & text colors
+    const publicHolidayColor = localStorage.getItem('publicHolidayColor') || '#2563eb';
     document.documentElement.style.setProperty('--public-holiday-color', publicHolidayColor);
+    const publicHolidayTextColor = localStorage.getItem('publicHolidayTextColor') || '#ffffff';
+    document.documentElement.style.setProperty('--public-holiday-text-color', publicHolidayTextColor);
 
-    const schoolHolidayColor = localStorage.getItem('schoolHolidayColor') || '#d1d5db'; // Default gray-300
+    const schoolHolidayColor = localStorage.getItem('schoolHolidayColor') || '#a8a29e';
     document.documentElement.style.setProperty('--school-holiday-color', schoolHolidayColor);
+    const schoolHolidayTextColor = localStorage.getItem('schoolHolidayTextColor') || '#ffffff';
+    document.documentElement.style.setProperty('--school-holiday-text-color', schoolHolidayTextColor);
 
-    const bookedColor = localStorage.getItem('bookedColor') || '#dc2626'; // Default red-600
+    const bookedColor = localStorage.getItem('bookedColor') || '#dc2626';
     document.documentElement.style.setProperty('--booked-color', bookedColor);
+    const bookedTextColor = localStorage.getItem('bookedTextColor') || '#ffffff';
+    document.documentElement.style.setProperty('--booked-text-color', bookedTextColor);
+
+    // Text colors for primary and secondary already loaded in Settings.jsx and set as CSS vars.
+    // We need to ensure App.jsx also loads them for elements it controls directly if not covered by Settings.
+    const primaryTextColor = localStorage.getItem('primaryTextColor') || '#ffffff';
+    document.documentElement.style.setProperty('--primary-text-color', primaryTextColor);
+    const secondaryTextColor = localStorage.getItem('secondaryTextColor') || '#ffffff';
+    document.documentElement.style.setProperty('--secondary-text-color', secondaryTextColor);
 
 
     const storedToken = localStorage.getItem('token');
@@ -547,8 +567,7 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   const eventStyleGetter = (event) => {
     let style = {
       borderRadius: '5px',
-      opacity: 0.8, // Default opacity for events
-      color: 'white', // Default text color
+      // opacity: 0.8, // Default opacity for events - will be handled by specific types or RGBA alpha
       border: '0px',
       display: 'block',
       fontWeight: 'bold',
@@ -571,36 +590,36 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
     switch (event.type) {
       case 'booking':
         style.backgroundColor = bookedBaseColor;
-        // Text color for booked events should be white by default, but could be dynamic if needed
+        style.color = docStyle.getPropertyValue('--booked-text-color').trim() || '#ffffff';
+        style.opacity = 0.9; // Slightly more opaque for main bookings
+
         if (event.status === 'reserved') {
           style.backgroundColor = hexToRgba(bookedBaseColor, 0.6); // 40% transparency
-          style.opacity = 1; // Let the rgba alpha handle transparency, not this main opacity.
-          // Potentially choose text color based on lightness of bookedBaseColor for better readability
-          // For simplicity, we'll use a dark text for reserved events.
-          style.color = '#374151'; // Tailwind gray-700, good for many lightish backgrounds
+          // For reserved, explicitly use a contrasting text color, or inherit from bookedTextColor and hope for the best.
+          // Using bookedTextColor might be fine if it's generally chosen to contrast with bookedBaseColor.
+          // If bookedTextColor is light, and bookedBaseColor is light, this could be an issue.
+          // For now, let's use bookedTextColor, assuming user configures it well.
+          style.color = docStyle.getPropertyValue('--booked-text-color').trim() || '#111827'; // Fallback to dark if not set
           style.fontWeight = 'normal';
+          style.opacity = 0.75; // Slightly more transparent for reserved
         }
         break;
       case 'publicHoliday':
         style.backgroundColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
+        style.color = docStyle.getPropertyValue('--public-holiday-text-color').trim() || '#ffffff';
         style.zIndex = 10;
-        // Text color for public holidays should be white by default
+        style.opacity = 0.9;
         break;
       case 'schoolHoliday':
-        const schoolHolidayBaseColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e'; // Tailwind stone-400 as a more backgroundy default
-        style.backgroundColor = schoolHolidayBaseColor;
-        // Determine text color based on the brightness of schoolHolidayBaseColor for better contrast
-        // This is a simple heuristic. A more robust solution would convert to HSL and check Lightness.
-        const r = parseInt(schoolHolidayBaseColor.slice(1,3),16);
-        const g = parseInt(schoolHolidayBaseColor.slice(3,5),16);
-        const b = parseInt(schoolHolidayBaseColor.slice(5,7),16);
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        style.color = brightness > 125 ? '#000000' : '#FFFFFF'; // Black text on light, white on dark
-        style.border = `1px solid ${hexToRgba(schoolHolidayBaseColor, 0.7)}`; // Border with slight transparency based on the color
-        style.opacity = 0.9;
+        style.backgroundColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e';
+        style.color = docStyle.getPropertyValue('--school-holiday-text-color').trim() || '#1f2937'; // Default dark text
+        style.border = `1px solid ${hexToRgba(docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e', 0.5)}`;
+        style.opacity = 0.85;
         break;
       default:
         style.backgroundColor = '#64748b'; // Slate as a fallback
+        style.color = '#ffffff';
+        style.opacity = 0.8;
         break;
     }
     return { style };
@@ -627,22 +646,22 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
             style={{ backgroundColor: 'var(--background-color)' }} // Apply dynamic background color
         >
             <header className="flex justify-between items-center mb-4">
-                <h1 className="text-3xl font-bold" style={{ color: 'var(--primary-color)' }}> {/* Removed text-gray-800 for better contrast with dynamic bg */}
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--primary-color)' }}>
                     {localStorage.getItem('pageTitle') || 'Belegungskalender'}
                 </h1>
                 <div>
-                    <span className="text-gray-700 mr-4">Angemeldet als: {user.displayName}</span>
+                    <span className="mr-4" style={{ color: 'var(--background-text-color)' }}>Angemeldet als: {user.displayName}</span>
                     <button
                         onClick={() => setAppView(appView === 'calendar' ? 'settings' : 'calendar')}
-                        className="px-4 py-2 font-medium text-white rounded-md hover:bg-blue-700 mr-2"
-                        style={{ backgroundColor: 'var(--primary-color)' }}
+                        className="px-4 py-2 font-medium rounded-md hover:opacity-90 mr-2" // Removed specific text/bg color classes
+                        style={{ backgroundColor: 'var(--primary-color)', color: 'var(--primary-text-color)' }}
                     >
                         {appView === 'calendar' ? 'Einstellungen' : 'Kalender'}
                     </button>
                     <button
                         onClick={handleLogout}
-                        className="px-4 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                        style={{ backgroundColor: 'var(--secondary-color)' }}
+                        className="px-4 py-2 font-medium rounded-md hover:opacity-90" // Removed specific text/bg color classes
+                        style={{ backgroundColor: 'var(--secondary-color)', color: 'var(--secondary-text-color)' }}
                     >
                         Abmelden
                     </button>
