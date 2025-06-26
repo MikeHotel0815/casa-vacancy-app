@@ -37,4 +37,24 @@ router.put('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// ---- ROUTE: GET /api/users ----
+// Ruft alle Benutzer ab (nur für Admins).
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    // Überprüfen, ob der angemeldete Benutzer ein Admin ist
+    // req.user.isAdmin wird durch das modifizierte Login (Schritt 4) gesetzt.
+    if (!req.user || !req.user.isAdmin) {
+      return res.status(403).json({ msg: 'Zugriff verweigert. Nur Administratoren können Benutzerdaten abrufen.' });
+    }
+
+    const users = await User.findAll({
+      attributes: ['id', 'displayName', 'email'], // Nur benötigte Attribute senden
+    });
+    res.json(users);
+  } catch (error) {
+    console.error("Fehler beim Abrufen aller Benutzer:", error);
+    res.status(500).json({ error: error.message || 'Serverfehler beim Abrufen der Benutzer.' });
+  }
+});
+
 module.exports = router;

@@ -73,16 +73,22 @@ router.post('/login', async (req, res) => {
       id: user.id,
       email: user.email,
       displayName: displayName, // Den (möglicherweise Fallback-)Namen verwenden
+      isAdmin: user.isAdmin, // isAdmin-Status zum JWT-Payload hinzufügen
     };
     const token = jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '1h' } // Token-Gültigkeit auf 1 Stunde gesetzt
     );
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, displayName: displayName } // Anzeigename auch hier hinzufügen
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: displayName, // Anzeigename auch hier hinzufügen
+        isAdmin: user.isAdmin, // isAdmin-Status zum User-Objekt in der Response hinzufügen
+      }
     });
 
   } catch (error) {

@@ -30,9 +30,21 @@ const BookingConfirmationModal = ({
   onSubmit,
   initialStartDate,
   initialEndDate,
+  currentUser, // Added: current user, contains isAdmin
+  allUsers,    // Added: list of all users for admin
 }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  // New state for admin to select a user
+  const [selectedUserId, setSelectedUserId] = useState(currentUser ? currentUser.id.toString() : '');
+
+
+  useEffect(() => {
+    // When current user changes (e.g., on initial load or re-login), reset selectedUserId
+    if (currentUser) {
+      setSelectedUserId(currentUser.id.toString());
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (initialStartDate) {
@@ -60,7 +72,8 @@ const BookingConfirmationModal = ({
       alert('Das Enddatum darf nicht vor dem Startdatum liegen.');
       return;
     }
-    onSubmit(parsedStartDate, parsedEndDate, type);
+    // Pass selectedUserId to the onSubmit handler
+    onSubmit(parsedStartDate, parsedEndDate, type, selectedUserId);
   };
 
   return (
@@ -93,6 +106,25 @@ const BookingConfirmationModal = ({
               className="input-field" // Use global input-field style
             />
           </div>
+          {currentUser && currentUser.isAdmin && allUsers && allUsers.length > 0 && (
+            <div>
+              <label htmlFor="userSelect" className="block text-sm font-medium text-gray-700 mb-1">
+                Benutzer auswählen (Admin):
+              </label>
+              <select
+                id="userSelect"
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="input-field" // Use global input-field style
+              >
+                {allUsers.map(user => (
+                  <option key={user.id} value={user.id.toString()}>
+                    {user.displayName} (ID: {user.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="flex justify-end space-x-3 mt-8"> {/* Increased top margin for button group */}
           <button

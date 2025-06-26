@@ -120,10 +120,11 @@ const Modal = ({ children }) => {
 
 function App() {
   // --- AUTH & VIEW STATES ---
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); // User object, will include isAdmin
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [view, setView] = useState('login'); // Can be 'login', 'register', 'calendar', 'settings'
   const [appView, setAppView] = useState('calendar'); // 'calendar' or 'settings'
+  const [allUsers, setAllUsers] = useState([]); // For admin to select user
 
   // --- CALENDAR & MODAL STATES ---
   const [events, setEvents] = useState([]);
@@ -271,6 +272,27 @@ function App() {
     fetchAllEvents();
   }, [date, user]);
 
+  // Fetch all users if the current user is an admin
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      if (user && user.isAdmin && token) {
+        try {
+          const response = await axios.get(`${API_URL}/users`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setAllUsers(response.data);
+        } catch (error) {
+          console.error('Fehler beim Laden aller Benutzer:', error);
+          // Optionally, set an error state or show a notification
+        }
+      } else {
+        setAllUsers([]); // Clear if not admin or no token
+      }
+    };
+
+    fetchAllUsers();
+  }, [user, token]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       // If the modal is shown, don't clear selection from clicks outside calendar
@@ -364,7 +386,7 @@ function App() {
     }
   };
 
-  const handleModalSubmit = async (newStartDate, newEndDate, type) => {
+  const handleModalSubmit = async (newStartDate, newEndDate, type, selectedUserIdForBooking) => {
     if (!token) {
       alert("Bitte melden Sie sich an.");
       setShowBookingModal(false);
@@ -374,16 +396,30 @@ function App() {
       setTimeout(() => setIgnoreNextCalendarClick(false), 50);
       return;
     }
+
+    const payload = {
+      startDate: format(newStartDate, 'yyyy-MM-dd'),
+      endDate: format(newEndDate, 'yyyy-MM-dd'),
+      status: type,
+    };
+
+    if (user && user.isAdmin && selectedUserIdForBooking) {
+      const targetUser = allUsers.find(u => u.id === parseInt(selectedUserIdForBooking));
+      if (targetUser) {
+        payload.userId = targetUser.id;
+        // backend will use displayName from this targetUser.id, so no need to send displayName
+        // payload.displayName = targetUser.displayName; // Not strictly needed if backend fetches based on userId
+      } else if (selectedUserIdForBooking !== user.id.toString()){ // if admin selected a user but user not found (error)
+        alert("Ausgewählter Benutzer nicht gefunden. Buchung wird für Sie selbst erstellt.");
+        // Fallback to booking for admin themselves if selected user is invalid and not the admin
+      }
+      // If selectedUserIdForBooking is the admin's own ID, or no user selected, it books for the admin.
+    }
+
     try {
-      await axios.post(
-        `${API_URL}/bookings`,
-        {
-          startDate: format(newStartDate, 'yyyy-MM-dd'),
-          endDate: format(newEndDate, 'yyyy-MM-dd'),
-          status: type
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.post(`${API_URL}/bookings`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setShowBookingModal(false);
       setDate(new Date(date.getTime()));
       setSelectionStart(null); // Clear selection after successful booking/reservation
@@ -435,6 +471,36 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   }
 };
 
+const handleUpdateBookingAdmin = async () => {
+  if (!token || !selectedBooking || !(user && user.isAdmin)) {
+    alert("Aktion nicht möglich oder nicht autorisiert.");
+    return;
+  }
+  try {
+    const payload = {
+      startDate: format(selectedBooking.start, 'yyyy-MM-dd'),
+      endDate: format(selectedBooking.end, 'yyyy-MM-dd'),
+      status: selectedBooking.status,
+      userId: selectedBooking.userId, // Send the potentially changed userId
+      // displayName will be derived by the backend based on userId
+    };
+
+    await axios.put(
+      `${API_URL}/bookings/${selectedBooking.id}`,
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setSelectedBooking(null); // Close the detail modal
+    setDate(new Date(date.getTime())); // Refresh calendar data to show changes
+    // Or, more efficiently, update the event in the local 'events' state
+  } catch (error) {
+    console.error(`Fehler beim Aktualisieren der Buchung (Admin):`, error);
+    alert(error.response?.data?.msg || "Buchung konnte nicht aktualisiert werden.");
+    // Keep detail modal open on error, allowing user to correct or retry
+  }
+};
+
+
   const handleSelecting = (range) => {
     // This function is called when the user is dragging to select a range.
     // It should return true to allow the selection, or false to prevent it.
@@ -445,9 +511,12 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   };
   
   const handleSelectEvent = (event) => {
-    if (user && event && event.type === 'booking' && String(event.userId) === String(user.id)) {
-      setSelectedBooking(event);
-      setShowConfirmDelete(false); // Reset confirmation view
+    // Admins can select any booking, others only their own.
+    if (event && event.type === 'booking' && user) {
+      if (user.isAdmin || String(event.userId) === String(user.id)) {
+        setSelectedBooking(event);
+        setShowConfirmDelete(false); // Reset confirmation view
+      }
     }
   };
 
@@ -573,7 +642,8 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
       border: '0px',
       display: 'block',
       fontWeight: 'bold',
-      cursor: (event.type === 'booking' && user && String(event.userId) === String(user.id)) ? 'pointer' : 'default',
+      // Admins can click any booking, users only their own.
+      cursor: (event.type === 'booking' && user && (user.isAdmin || String(event.userId) === String(user.id))) ? 'pointer' : 'default',
     };
 
     const docStyle = getComputedStyle(document.documentElement);
@@ -736,6 +806,8 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
         onSubmit={handleModalSubmit}
         initialStartDate={modalStartDate}
         initialEndDate={modalEndDate}
+         currentUser={user} // Pass current user (contains isAdmin)
+         allUsers={allUsers} // Pass all users for admin dropdown
       />}
 
       {appView === 'calendar' && selectedBooking && (
@@ -744,36 +816,93 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
             {!showConfirmDelete ? (
               <>
                 <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
-                <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
-                <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-yellow-600' : 'text-red-700'}`}>
-                  {selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}
-                </span></p>
-                <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
-                <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
-                <div className="mt-6 flex flex-wrap justify-between items-center gap-2">
-                  <div>
-                    {selectedBooking.status === 'reserved' && (
-                      <button
-                        onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')}
-                        className="btn bg-green-500 hover:bg-green-600 text-white" // More specific button style
+                {/* Admin-specific editing fields */}
+                {user && user.isAdmin ? (
+                  <>
+                    <div className="mb-4">
+                      <label htmlFor="editBookingUser" className="block text-sm font-medium text-gray-700 mb-1">Benutzer:</label>
+                      <select
+                        id="editBookingUser"
+                        className="input-field"
+                        value={selectedBooking.userId.toString()} // Assuming selectedBooking has userId
+                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, userId: parseInt(e.target.value), displayName: allUsers.find(u => u.id === parseInt(e.target.value))?.displayName || prev.displayName }))}
                       >
-                        Zu Buchung ändern
-                      </button>
-                    )}
-                    {selectedBooking.status === 'booked' && (
-                      <button
-                        onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')}
-                        className="btn bg-yellow-500 hover:bg-yellow-600 text-white" // More specific button style
+                        {allUsers.map(u => <option key={u.id} value={u.id.toString()}>{u.displayName}</option>)}
+                      </select>
+                    </div>
+                    <div className="mb-4">
+                      <label htmlFor="editBookingStartDate" className="block text-sm font-medium text-gray-700 mb-1">Startdatum:</label>
+                      <input
+                        type="date"
+                        id="editBookingStartDate"
+                        className="input-field"
+                        value={format(selectedBooking.start, 'yyyy-MM-dd')}
+                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, start: new Date(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label htmlFor="editBookingEndDate" className="block text-sm font-medium text-gray-700 mb-1">Enddatum:</label>
+                      <input
+                        type="date"
+                        id="editBookingEndDate"
+                        className="input-field"
+                        value={format(selectedBooking.end, 'yyyy-MM-dd')}
+                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, end: new Date(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label htmlFor="editBookingStatus" className="block text-sm font-medium text-gray-700 mb-1">Status:</label>
+                      <select
+                        id="editBookingStatus"
+                        className="input-field"
+                        value={selectedBooking.status}
+                        onChange={(e) => setSelectedBooking(prev => ({ ...prev, status: e.target.value }))}
                       >
-                        Zu Reservierung ändern
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
-                    <button onClick={() => setSelectedBooking(null)} className="btn btn-secondary">Schließen</button>
-                  </div>
-                </div>
+                        <option value="booked">Gebucht</option>
+                        <option value="reserved">Reserviert</option>
+                      </select>
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-2">
+                      <button onClick={() => handleUpdateBookingAdmin()} className="btn btn-primary">Änderungen speichern</button>
+                      <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
+                      <button onClick={() => { setSelectedBooking(null); fetchAllEvents(); /* Refetch to discard local changes */ }} className="btn btn-secondary">Schließen</button>
+                    </div>
+                  </>
+                ) : (
+                  // Regular user view (existing logic)
+                  <>
+                    <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
+                    <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-yellow-600' : 'text-red-700'}`}>
+                      {selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}
+                    </span></p>
+                    <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
+                    <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
+                    <div className="mt-6 flex flex-wrap justify-between items-center gap-2">
+                      <div>
+                        {selectedBooking.status === 'reserved' && (
+                          <button
+                            onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')}
+                            className="btn bg-green-500 hover:bg-green-600 text-white"
+                          >
+                            Zu Buchung ändern
+                          </button>
+                        )}
+                        {selectedBooking.status === 'booked' && (
+                          <button
+                            onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')}
+                            className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
+                          >
+                            Zu Reservierung ändern
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
+                        <button onClick={() => setSelectedBooking(null)} className="btn btn-secondary">Schließen</button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <>
