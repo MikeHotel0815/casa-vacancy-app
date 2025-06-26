@@ -10,6 +10,7 @@ const { sequelize, connectDB } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/bookings');
 const holidayRoutes = require('./routes/holidays');
+const userRoutes = require('./routes/users'); // Importiere die neuen Benutzerrouten
 
 // --- Initialisierung ---
 const app = express();
@@ -28,6 +29,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 // Alle Feiertags- und Ferien-Routen werden unter /api/holidays erreichbar sein
 app.use('/api/holidays', holidayRoutes);
+// Alle Benutzer-Routen werden unter /api/users erreichbar sein
+app.use('/api/users', userRoutes);
 
 // --- Server-Start und Datenbank-Synchronisation ---
 const startServer = async () => {

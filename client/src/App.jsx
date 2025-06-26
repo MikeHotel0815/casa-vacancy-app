@@ -63,6 +63,7 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
 import Login from './components/Login';
 import Register from './components/Register';
 import BookingConfirmationModal from './components/BookingConfirmationModal'; // Import new modal
+import Settings from './components/Settings'; // Import Settings component
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -111,7 +112,8 @@ function App() {
   // --- AUTH & VIEW STATES ---
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [view, setView] = useState('login'); 
+  const [view, setView] = useState('login'); // Can be 'login', 'register', 'calendar', 'settings'
+  const [appView, setAppView] = useState('calendar'); // 'calendar' or 'settings'
 
   // --- CALENDAR & MODAL STATES ---
   const [events, setEvents] = useState([]);
@@ -132,6 +134,21 @@ function App() {
 
   // --- EFFECTS ---
   useEffect(() => {
+    // Load settings from localStorage on initial app load
+    const initialPageTitle = localStorage.getItem('pageTitle') || 'Belegungskalender';
+    document.title = initialPageTitle;
+
+    const primaryColor = localStorage.getItem('primaryColor') || '#2563eb';
+    document.documentElement.style.setProperty('--primary-color', primaryColor);
+
+    const secondaryColor = localStorage.getItem('secondaryColor') || '#dc2626';
+    document.documentElement.style.setProperty('--secondary-color', secondaryColor);
+
+    const backgroundColor = localStorage.getItem('backgroundColor') || '#f9fafb'; // Default gray-50
+    document.documentElement.style.setProperty('--background-color', backgroundColor);
+    document.body.style.backgroundColor = backgroundColor;
+
+
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     if (storedToken && storedUser) {
@@ -248,6 +265,7 @@ function App() {
     localStorage.setItem('user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
+    setAppView('calendar'); // After login, show calendar
   };
 
   const handleLogout = () => {
@@ -255,7 +273,17 @@ function App() {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-    setView('login');
+    setView('login'); // Go back to login screen
+    setAppView('calendar'); // Reset app view
+  };
+
+  const handleUpdateUser = async (updatedUser) => {
+    // This function would ideally call an API to update user data on the server
+    // For now, it updates the local state and localStorage
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    // Potentially, re-fetch bookings if displayName change affects them, or update in-memory events
+    // For now, assume displayName changes are reflected on next full fetch or are minor.
   };
 
   const handleSelectSlot = ({ start, end, action }) => {
@@ -535,18 +563,38 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   return (
     <>
         {/* Hauptinhalts-Container mit vereinfachtem Layout */}
-        <div className="p-4 md:p-8 h-screen flex flex-col bg-gray-50 max-w-[1920px] max-h-[1080px] mx-auto">
+        <div
+            className="p-4 md:p-8 h-screen flex flex-col max-w-[1920px] max-h-[1080px] mx-auto"
+            style={{ backgroundColor: 'var(--background-color)' }} // Apply dynamic background color
+        >
             <header className="flex justify-between items-center mb-4">
-                <h1 className="text-3xl font-bold text-gray-800">Belegungskalender</h1>
+                <h1 className="text-3xl font-bold" style={{ color: 'var(--primary-color)' }}> {/* Removed text-gray-800 for better contrast with dynamic bg */}
+                    {localStorage.getItem('pageTitle') || 'Belegungskalender'}
+                </h1>
                 <div>
                     <span className="text-gray-700 mr-4">Angemeldet als: {user.displayName}</span>
-                    <button onClick={handleLogout} className="px-4 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Abmelden</button>
+                    <button
+                        onClick={() => setAppView(appView === 'calendar' ? 'settings' : 'calendar')}
+                        className="px-4 py-2 font-medium text-white rounded-md hover:bg-blue-700 mr-2"
+                        style={{ backgroundColor: 'var(--primary-color)' }}
+                    >
+                        {appView === 'calendar' ? 'Einstellungen' : 'Kalender'}
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="px-4 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                        style={{ backgroundColor: 'var(--secondary-color)' }}
+                    >
+                        Abmelden
+                    </button>
                 </div>
             </header>
-            <div className="flex-grow" ref={calendarRef}> {/* Attach ref here */}
-                <Calendar
-                    localizer={localizer}
-                    events={events.filter(event => event.type !== 'publicHoliday')}
+
+            {appView === 'calendar' && (
+              <div className="flex-grow" ref={calendarRef}> {/* Attach ref here */}
+                  <Calendar
+                      localizer={localizer}
+                      events={events.filter(event => event.type !== 'publicHoliday')}
                     startAccessor="start"
                     endAccessor="end"
                     selectable
@@ -579,29 +627,35 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
                     }}
                     style={{ height: '100%' }}
                 />
-            </div>
-            {selectionStart && !selectionEnd && ( // Show message only when waiting for end date
+              </div>
+            )}
+
+            {appView === 'settings' && (
+                <Settings user={user} onUpdateUser={handleUpdateUser} />
+            )}
+
+            {appView === 'calendar' && selectionStart && !selectionEnd && ( // Show message only when waiting for end date
                 <div className="mt-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-center animate-pulse">
                     Startdatum ausgewählt: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong>. Bitte Enddatum auswählen oder Zeitraum ziehen.
                 </div>
             )}
-             {selectionStart && selectionEnd && ( // Show message when a period is selected
+             {appView === 'calendar' && selectionStart && selectionEnd && ( // Show message when a period is selected
                 <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-center">
                     Ausgewählter Zeitraum: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong> bis <strong>{format(selectionEnd, 'dd.MM.yyyy')}</strong>. Erneut klicken zum Bestätigen oder neues Startdatum wählen.
                 </div>
             )}
         </div>
 
-        <BookingConfirmationModal
+        {appView === 'calendar' && <BookingConfirmationModal
             isOpen={showBookingModal}
             onClose={handleModalClose}
             onSubmit={handleModalSubmit}
             initialStartDate={modalStartDate}
             initialEndDate={modalEndDate}
-        />
+        />}
 
         {/* Das Modal wird jetzt mit der Portal-Komponente gerendert */}
-        {selectedBooking && (
+        {appView === 'calendar' && selectedBooking && (
             <Modal>
                 <div style={{backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.5rem'}} className="shadow-xl max-w-md mx-4">
                     {!showConfirmDelete ? (
