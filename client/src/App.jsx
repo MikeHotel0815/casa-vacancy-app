@@ -50,13 +50,14 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
   }
 
   return (
-    <div className="flex items-start h-full w-full overflow-hidden pt-1"> {/* items-start for vertical alignment if text wraps, added padding top */}
-      <span className="rbc-date-cell-label flex-shrink-0 mr-1">{label}</span>
+    <div className="flex flex-col h-full w-full overflow-hidden pt-1"> {/* Changed to flex-col for centering holiday name */}
+      <span className="rbc-date-cell-label text-center w-full">{label}</span> {/* Centered date label */}
       {holidayDisplaySpan && (
-        <div className="flex-grow overflow-auto" style={{ flexBasis: '90%', maxHeight: '3em' }}>
+        <div className="flex-grow overflow-auto text-center w-full" style={{ maxHeight: 'calc(3em - 1em)' }}> {/* Adjusted maxHeight and added text-center */}
           {/*
             flex-grow allows it to take space.
             overflow-auto on this div will show a scrollbar if content exceeds maxHeight.
+            text-center to center the holiday name.
             maxHeight is a suggestion to prevent extreme cell height, adjust as needed.
             The inner span (holidayDisplaySpan) will wrap its text.
           */}
