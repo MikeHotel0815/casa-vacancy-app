@@ -9,6 +9,10 @@ const Settings = ({ user, onUpdateUser }) => {
   const [primaryColor, setPrimaryColor] = useState(localStorage.getItem('primaryColor') || '#2563eb'); // Default blue-600
   const [secondaryColor, setSecondaryColor] = useState(localStorage.getItem('secondaryColor') || '#dc2626'); // Default red-600
   const [backgroundColor, setBackgroundColor] = useState(localStorage.getItem('backgroundColor') || '#f9fafb'); // Default gray-50
+  const [publicHolidayColor, setPublicHolidayColor] = useState(localStorage.getItem('publicHolidayColor') || '#2563eb'); // Default blue-600
+  const [schoolHolidayColor, setSchoolHolidayColor] = useState(localStorage.getItem('schoolHolidayColor') || '#d1d5db'); // Default gray-300 (for text on white bg)
+  const [bookedColor, setBookedColor] = useState(localStorage.getItem('bookedColor') || '#dc2626'); // Default red-600
+
 
   useEffect(() => {
     // Apply the page title when the component mounts or pageTitle changes
@@ -35,6 +39,21 @@ const Settings = ({ user, onUpdateUser }) => {
     document.body.style.backgroundColor = backgroundColor;
   }, [backgroundColor]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty('--public-holiday-color', publicHolidayColor);
+    localStorage.setItem('publicHolidayColor', publicHolidayColor);
+  }, [publicHolidayColor]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--school-holiday-color', schoolHolidayColor);
+    localStorage.setItem('schoolHolidayColor', schoolHolidayColor);
+  }, [schoolHolidayColor]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--booked-color', bookedColor);
+    localStorage.setItem('bookedColor', bookedColor);
+  }, [bookedColor]);
+
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -58,6 +77,9 @@ const Settings = ({ user, onUpdateUser }) => {
         localStorage.setItem('primaryColor', primaryColor);
         localStorage.setItem('secondaryColor', secondaryColor);
         localStorage.setItem('backgroundColor', backgroundColor);
+        localStorage.setItem('publicHolidayColor', publicHolidayColor);
+        localStorage.setItem('schoolHolidayColor', schoolHolidayColor);
+        localStorage.setItem('bookedColor', bookedColor);
 
         alert('Einstellungen gespeichert!');
       } catch (error) {
@@ -70,6 +92,9 @@ const Settings = ({ user, onUpdateUser }) => {
       localStorage.setItem('primaryColor', primaryColor);
       localStorage.setItem('secondaryColor', secondaryColor);
       localStorage.setItem('backgroundColor', backgroundColor);
+      localStorage.setItem('publicHolidayColor', publicHolidayColor);
+      localStorage.setItem('schoolHolidayColor', schoolHolidayColor);
+      localStorage.setItem('bookedColor', bookedColor);
       alert('Einstellungen gespeichert! (Lokale Einstellungen aktualisiert)');
     }
   };
@@ -136,7 +161,45 @@ const Settings = ({ user, onUpdateUser }) => {
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <h3 className="text-lg font-medium text-gray-900 mt-6 mb-2">Kalenderfarben</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="bookedColor" className="block text-sm font-medium text-gray-700">Gebuchte Termine</label>
+            <input
+              type="color"
+              id="bookedColor"
+              value={bookedColor}
+              onChange={(e) => setBookedColor(e.target.value)}
+              className="mt-1 block w-full h-10 border border-gray-300 rounded-md shadow-sm cursor-pointer"
+            />
+          </div>
+          <div>
+            <label htmlFor="publicHolidayColor" className="block text-sm font-medium text-gray-700">Feiertage</label>
+            <input
+              type="color"
+              id="publicHolidayColor"
+              value={publicHolidayColor}
+              onChange={(e) => setPublicHolidayColor(e.target.value)}
+              className="mt-1 block w-full h-10 border border-gray-300 rounded-md shadow-sm cursor-pointer"
+            />
+          </div>
+          <div>
+            <label htmlFor="schoolHolidayColor" className="block text-sm font-medium text-gray-700">Schulferien</label>
+            <input
+              type="color"
+              id="schoolHolidayColor"
+              value={schoolHolidayColor}
+              onChange={(e) => setSchoolHolidayColor(e.target.value)}
+              className="mt-1 block w-full h-10 border border-gray-300 rounded-md shadow-sm cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div className="mt-2 text-sm text-gray-600">
+          <p>Reservierte Termine verwenden die Farbe von "Gebuchte Termine" mit 40% Transparenz.</p>
+        </div>
+
+        <div className="flex justify-end pt-4">
           <button
             type="submit"
             className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

@@ -31,9 +31,13 @@ const CustomDateHeader = ({ date, label, allEvents }) => {
     // Tooltip will show all holidays if there are multiple on the same day
     const tooltipTitle = publicHolidays.map(h => h.title).join(', ');
 
+    // Get the computed style for public holiday color
+    const publicHolidayColor = getComputedStyle(document.documentElement).getPropertyValue('--public-holiday-color').trim() || '#2563eb';
+
     holidayDisplaySpan = (
       <span
-        className="text-xs text-[rgba(37,99,235,0.65)] whitespace-normal" // blue-700 at 65% opacity
+        className="text-xs whitespace-normal" // Removed specific color class
+        style={{ color: publicHolidayColor, opacity: 0.85 }} // Apply dynamic color and slight opacity
         title={tooltipTitle}
       >
         {fullHolidayTitle}
@@ -147,6 +151,16 @@ function App() {
     const backgroundColor = localStorage.getItem('backgroundColor') || '#f9fafb'; // Default gray-50
     document.documentElement.style.setProperty('--background-color', backgroundColor);
     document.body.style.backgroundColor = backgroundColor;
+
+    // Load calendar event colors
+    const publicHolidayColor = localStorage.getItem('publicHolidayColor') || '#2563eb'; // Default blue-600
+    document.documentElement.style.setProperty('--public-holiday-color', publicHolidayColor);
+
+    const schoolHolidayColor = localStorage.getItem('schoolHolidayColor') || '#d1d5db'; // Default gray-300
+    document.documentElement.style.setProperty('--school-holiday-color', schoolHolidayColor);
+
+    const bookedColor = localStorage.getItem('bookedColor') || '#dc2626'; // Default red-600
+    document.documentElement.style.setProperty('--booked-color', bookedColor);
 
 
     const storedToken = localStorage.getItem('token');
@@ -460,19 +474,45 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
     const normalizeDate = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const currentDate = normalizeDate(date);
     let style = {};
+    const docStyle = getComputedStyle(document.documentElement);
 
-    // Check for holidays
-    const isHoliday = events.some(event => {
-      if (event.type === 'publicHoliday' || event.type === 'schoolHoliday') {
-        const holidayStart = normalizeDate(new Date(event.start));
-        const holidayEnd = normalizeDate(new Date(event.end));
-        return currentDate >= holidayStart && currentDate <= holidayEnd;
-      }
-      return false;
+    // Helper function to convert hex to rgba
+    const hexToRgba = (hex, alpha) => {
+        if (!hex || !hex.startsWith('#')) return `rgba(200,200,200,${alpha})`; // Fallback for invalid hex
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    // Check for public holidays
+    const isPublicHoliday = events.some(event => {
+        if (event.type === 'publicHoliday') {
+            const holidayStart = normalizeDate(new Date(event.start));
+            // public holidays are single days, so end date is same as start
+            return currentDate.getTime() === holidayStart.getTime();
+        }
+        return false;
     });
 
-    if (isHoliday) {
-      style.backgroundColor = 'rgba(229, 231, 235, 0.8)'; // Light gray (Tailwind gray-200 at 80% opacity)
+    // Check for school holidays
+    const isSchoolHoliday = events.some(event => {
+        if (event.type === 'schoolHoliday') {
+            const holidayStart = normalizeDate(new Date(event.start));
+            const holidayEnd = normalizeDate(new Date(event.end));
+            return currentDate >= holidayStart && currentDate <= holidayEnd;
+        }
+        return false;
+    });
+
+    if (isPublicHoliday) {
+        const publicHolidayBgColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
+        // Apply with some transparency to differentiate from event block
+        style.backgroundColor = hexToRgba(publicHolidayBgColor, 0.3);
+    } else if (isSchoolHoliday) { // else if, so public holidays take precedence
+        const schoolHolidayBgColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#d1d5db';
+        // Apply with some transparency
+        style.backgroundColor = hexToRgba(schoolHolidayBgColor, 0.3);
     }
 
     // Apply selection styling - this will override holiday background if a day is selected
@@ -496,7 +536,7 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
             style.borderBottomRightRadius = '5px';
           }
           // Ensure continuous selection appearance if holiday and selection overlap
-          if (isHoliday) {
+          if (isPublicHoliday || isSchoolHoliday) { // Check against the specific holiday types
              // Make selection more prominent on holidays
             style.boxShadow = 'inset 0 0 0 2px rgba(245, 158, 11, 0.7)'; // Tailwind yellow-500 border inset
           }
@@ -509,39 +549,60 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   const eventStyleGetter = (event) => {
     let style = {
       borderRadius: '5px',
-      opacity: 0.8,
-      color: 'white',
+      opacity: 0.8, // Default opacity for events
+      color: 'white', // Default text color
       border: '0px',
       display: 'block',
       fontWeight: 'bold',
       cursor: (event.type === 'booking' && user && String(event.userId) === String(user.id)) ? 'pointer' : 'default',
     };
+
+    const docStyle = getComputedStyle(document.documentElement);
+
+    // Helper function to convert hex to rgba
+    const hexToRgba = (hex, alpha) => {
+      if (!hex || !hex.startsWith('#')) return `rgba(100,100,100,${alpha})`; // Fallback for invalid hex
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    const bookedBaseColor = docStyle.getPropertyValue('--booked-color').trim() || '#dc2626';
+
     switch (event.type) {
       case 'booking':
-        // Default booking color (e.g., red for 'booked')
-        style.backgroundColor = '#dc2626'; // Red for 'booked'
-        style.fontWeight = 'bold';
+        style.backgroundColor = bookedBaseColor;
+        // Text color for booked events should be white by default, but could be dynamic if needed
         if (event.status === 'reserved') {
-          style.backgroundColor = '#fdba74'; // Lighter orange for 'reserved'
-          style.opacity = 0.7; // Reserved bookings are more transparent
-          style.color = '#7c2d12'; // Darker text for better readability on light orange
+          style.backgroundColor = hexToRgba(bookedBaseColor, 0.6); // 40% transparency
+          style.opacity = 1; // Let the rgba alpha handle transparency, not this main opacity.
+          // Potentially choose text color based on lightness of bookedBaseColor for better readability
+          // For simplicity, we'll use a dark text for reserved events.
+          style.color = '#374151'; // Tailwind gray-700, good for many lightish backgrounds
           style.fontWeight = 'normal';
         }
         break;
-      case 'publicHoliday': // This case is not strictly necessary for event styling if events are filtered out
-        style.backgroundColor = '#2563eb'; // Blue
-        style.zIndex = 10; // Ensure public holidays are on top
-        // Note: publicHolidays are filtered out from the main event list for <Calendar />
-        // Their names are shown via CustomDateHeader, and day background via dayPropGetter.
+      case 'publicHoliday':
+        style.backgroundColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
+        style.zIndex = 10;
+        // Text color for public holidays should be white by default
         break;
       case 'schoolHoliday':
-        style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // White, slightly transparent background
-        style.color = '#4b5563'; // Darker gray text (Tailwind gray-600)
-        style.border = '1px solid #d1d5db'; // Light gray border (Tailwind gray-300)
-        style.opacity = 1; // Reset opacity if it was previously lowered globally for events
+        const schoolHolidayBaseColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e'; // Tailwind stone-400 as a more backgroundy default
+        style.backgroundColor = schoolHolidayBaseColor;
+        // Determine text color based on the brightness of schoolHolidayBaseColor for better contrast
+        // This is a simple heuristic. A more robust solution would convert to HSL and check Lightness.
+        const r = parseInt(schoolHolidayBaseColor.slice(1,3),16);
+        const g = parseInt(schoolHolidayBaseColor.slice(3,5),16);
+        const b = parseInt(schoolHolidayBaseColor.slice(5,7),16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        style.color = brightness > 125 ? '#000000' : '#FFFFFF'; // Black text on light, white on dark
+        style.border = `1px solid ${hexToRgba(schoolHolidayBaseColor, 0.7)}`; // Border with slight transparency based on the color
+        style.opacity = 0.9;
         break;
       default:
-        style.backgroundColor = '#64748b'; // Slate
+        style.backgroundColor = '#64748b'; // Slate as a fallback
         break;
     }
     return { style };
