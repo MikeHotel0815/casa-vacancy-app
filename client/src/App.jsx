@@ -816,7 +816,7 @@ const handleUpdateBookingAdmin = async () => {
           <div
             className={`card-custom mx-4 min-h-[400px] flex flex-col ${
               user && user.isAdmin && !showConfirmDelete
-                ? 'w-[800px] max-w-[95vw]' // Wider for admin edit
+                ? 'w-[500px] max-w-[95vw]' // Wider for admin edit
                 : 'w-[600px] max-w-[95vw]' // Wider for user view / delete confirm
             }`}
           >

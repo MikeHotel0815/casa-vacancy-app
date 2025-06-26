@@ -93,7 +93,7 @@ const BookingConfirmationModal = ({
               id="startDate"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="input-field w-64" // Specific width
+              className="input-field w-12" // Specific width
             />
           </div>
           <div>
@@ -105,7 +105,7 @@ const BookingConfirmationModal = ({
               id="endDate"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="input-field w-64" // Specific width
+              className="input-field w-12" // Specific width
             />
           </div>
           {currentUser && currentUser.isAdmin && allUsers && allUsers.length > 0 && (
@@ -128,7 +128,7 @@ const BookingConfirmationModal = ({
             </div>
           )}
         </div>
-        <div className="flex justify-end space-x-3 mt-8"> {/* Increased top margin for button group */}
+        <div className="flex justify-center align-center space-x-3 mt-8"> {/* Increased top margin for button group */}
           <button
             onClick={onClose}
             className="btn btn-secondary" // Use global button styles

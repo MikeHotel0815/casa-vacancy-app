@@ -50,7 +50,7 @@ h1, h2, h3, h4, h5, h6 {
   /* @apply mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm; */
   margin-top: 0.25rem;
   display: block;
-  width: 100%;
+  width: 50%;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
   padding-top: 0.5rem;
