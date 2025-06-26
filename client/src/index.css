@@ -3,7 +3,10 @@
 @tailwind base;
 
 body {
-  @apply font-sans bg-gray-100 text-gray-900;
+  /* The @apply font-sans utility class is causing issues.
+     We'll rely on the direct font-family declaration below and the tailwind.config.js theme extension. */
+  /* @apply font-sans bg-gray-100 text-gray-900; */
+  @apply bg-gray-100 text-gray-900;
   font-family: 'Inter', sans-serif;
 }
 
