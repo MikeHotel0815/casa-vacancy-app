@@ -93,7 +93,7 @@ const BookingConfirmationModal = ({
               id="startDate"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field max-w-xs" // Constrained width
             />
           </div>
           <div>
@@ -105,7 +105,7 @@ const BookingConfirmationModal = ({
               id="endDate"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="input-field" // Use global input-field style
+              className="input-field max-w-xs" // Constrained width
             />
           </div>
           {currentUser && currentUser.isAdmin && allUsers && allUsers.length > 0 && (

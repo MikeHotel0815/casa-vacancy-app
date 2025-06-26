@@ -836,11 +836,11 @@ const handleUpdateBookingAdmin = async () => {
                       </div>
                       <div className="mb-4">
                         <label htmlFor="editBookingStartDate" className="block text-sm font-medium text-gray-700 mb-1">Startdatum:</label>
-                        <input type="date" id="editBookingStartDate" className="input-field" value={format(selectedBooking.start, 'yyyy-MM-dd')} onChange={(e) => setSelectedBooking(prev => ({ ...prev, start: new Date(e.target.value) }))} />
+                        <input type="date" id="editBookingStartDate" className="input-field max-w-xs" value={format(selectedBooking.start, 'yyyy-MM-dd')} onChange={(e) => setSelectedBooking(prev => ({ ...prev, start: new Date(e.target.value) }))} />
                       </div>
                       <div className="mb-4">
                         <label htmlFor="editBookingEndDate" className="block text-sm font-medium text-gray-700 mb-1">Enddatum:</label>
-                        <input type="date" id="editBookingEndDate" className="input-field" value={format(selectedBooking.end, 'yyyy-MM-dd')} onChange={(e) => setSelectedBooking(prev => ({ ...prev, end: new Date(e.target.value) }))} />
+                        <input type="date" id="editBookingEndDate" className="input-field max-w-xs" value={format(selectedBooking.end, 'yyyy-MM-dd')} onChange={(e) => setSelectedBooking(prev => ({ ...prev, end: new Date(e.target.value) }))} />
                       </div>
                       <div className="mb-4">
                         <label htmlFor="editBookingStatus" className="block text-sm font-medium text-gray-700 mb-1">Status:</label>
