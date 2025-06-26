@@ -5,7 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}", // Hier wird sichergestellt, dass alle React-Komponenten gescannt werden
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'], // Stellt sicher, dass 'font-sans' die Inter-Schriftart verwendet
+      },
+    },
   },
   plugins: [],
 }
