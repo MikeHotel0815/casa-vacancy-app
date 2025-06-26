@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom styles for React Big Calendar */
+.rbc-toolbar {
+  display: flex; /* Ensure the toolbar itself is a flex container */
+  justify-content: space-between; /* Default spacing, adjust as needed */
+  align-items: center; /* Vertically align items in the center */
+}
+
+.rbc-toolbar-label {
+  font-size: 2em !important; /* Make text larger, !important to override potential inline styles or more specific selectors */
+  text-align: center !important; /* Center the text within the label */
+  flex-grow: 1 !important; /* Allow the label to take available space to center properly */
+  font-weight: bold !important; /* Make the font bold */
+}
