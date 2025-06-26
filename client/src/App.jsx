@@ -630,161 +630,163 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
   // --- RENDER ---
   if (!user) {
     return (
-      <div className="bg-gray-200 w-screen h-screen p-8 flex justify-center items-center">
-          {view === 'login' ? (
-            <Login onLoginSuccess={handleLoginSuccess} setView={setView} />
-          ) : (
-            <Register setView={setView} />
-          )}
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+        {view === 'login' ? (
+          <Login onLoginSuccess={handleLoginSuccess} setView={setView} />
+        ) : (
+          <Register setView={setView} />
+        )}
       </div>
     );
   }
 
   return (
     <>
-        {/* Hauptinhalts-Container mit vereinfachtem Layout */}
-        <div
-            className="p-4 md:p-8 h-screen flex flex-col max-w-[1920px] max-h-[1080px] mx-auto"
-            style={{ backgroundColor: 'var(--background-color)' }} // Apply dynamic background color
-        >
-            <header className="flex justify-between items-center mb-4">
-                <h1 className="text-3xl font-bold" style={{ color: 'var(--primary-color)' }}>
-                    {localStorage.getItem('pageTitle') || 'Belegungskalender'}
-                </h1>
-                <div>
-                    <span className="mr-4" style={{ color: 'var(--background-text-color)' }}>Angemeldet als: {user.displayName}</span>
-                    <button
-                        onClick={() => setAppView(appView === 'calendar' ? 'settings' : 'calendar')}
-                        className="px-4 py-2 font-medium rounded-md hover:opacity-90 mr-2" // Removed specific text/bg color classes
-                        style={{ backgroundColor: 'var(--primary-color)', color: 'var(--primary-text-color)' }}
-                    >
-                        {appView === 'calendar' ? 'Einstellungen' : 'Kalender'}
-                    </button>
-                    <button
-                        onClick={handleLogout}
-                        className="px-4 py-2 font-medium rounded-md hover:opacity-90" // Removed specific text/bg color classes
-                        style={{ backgroundColor: 'var(--secondary-color)', color: 'var(--secondary-text-color)' }}
-                    >
-                        Abmelden
-                    </button>
-                </div>
-            </header>
+      <div
+        className="p-4 md:p-8 h-screen flex flex-col max-w-full mx-auto" // Use max-w-full for full width
+        style={{ backgroundColor: 'var(--background-color)' }}
+      >
+        <header className="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-gray-300">
+          <h1 className="text-4xl font-bold" style={{ color: 'var(--primary-color)' }}>
+            {localStorage.getItem('pageTitle') || 'Belegungskalender'}
+          </h1>
+          <div className="flex items-center space-x-3 mt-2 md:mt-0">
+            <span className="text-sm font-medium" style={{ color: 'var(--background-text-color)' }}>
+              Angemeldet als: {user.displayName}
+            </span>
+            <button
+              onClick={() => setAppView(appView === 'calendar' ? 'settings' : 'calendar')}
+              className="btn btn-primary" // Apply global button style
+              // Removed inline style, relying on btn-primary from index.css or custom var if needed
+            >
+              {appView === 'calendar' ? 'Einstellungen' : 'Kalender'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="btn btn-secondary" // Apply global button style
+               // Removed inline style, relying on btn-secondary from index.css or custom var if needed
+            >
+              Abmelden
+            </button>
+          </div>
+        </header>
 
-            {appView === 'calendar' && (
-              <div className="flex-grow" ref={calendarRef}> {/* Attach ref here */}
-                  <Calendar
-                      localizer={localizer}
-                      events={events.filter(event => event.type !== 'publicHoliday')}
-                    startAccessor="start"
-                    endAccessor="end"
-                    selectable
-                    onSelectSlot={handleSelectSlot}
-                    onSelectEvent={handleSelectEvent}
-                    culture='de'
-                    date={date}
-                    view={calendarView}
-                    onNavigate={setDate}
-                    onView={setCalendarView}
-                    messages={{
-                        next: "Nächster",
-                        previous: "Vorheriger",
-                        today: "Heute",
-                        month: "Monat",
-                        week: "Woche",
-                        day: "Tag",
-                        agenda: "Agenda",
-                        date: "Datum",
-                        time: "Zeit",
-                        event: "Ereignis",
-                        noEventsInRange: "Keine Termine in diesem Zeitraum.",
-                    }}
-                    eventPropGetter={eventStyleGetter}
-                    dayPropGetter={dayPropGetter} // Added dayPropGetter
-                    onSelecting={handleSelecting} // Added onSelecting
-                    // selectable={true} // Duplicate removed, already present above
-                    components={{
-                      month: { dateHeader: (props) => <CustomDateHeader {...props} allEvents={events} /> }
-                    }}
-                    style={{ height: '100%' }}
-                />
-              </div>
-            )}
-
-            {appView === 'settings' && (
-                <Settings user={user} onUpdateUser={handleUpdateUser} />
-            )}
-
-            {appView === 'calendar' && selectionStart && !selectionEnd && ( // Show message only when waiting for end date
-                <div className="mt-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-center animate-pulse">
-                    Startdatum ausgewählt: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong>. Bitte Enddatum auswählen oder Zeitraum ziehen.
-                </div>
-            )}
-             {appView === 'calendar' && selectionStart && selectionEnd && ( // Show message when a period is selected
-                <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-center">
-                    Ausgewählter Zeitraum: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong> bis <strong>{format(selectionEnd, 'dd.MM.yyyy')}</strong>. Erneut klicken zum Bestätigen oder neues Startdatum wählen.
-                </div>
-            )}
-        </div>
-
-        {appView === 'calendar' && <BookingConfirmationModal
-            isOpen={showBookingModal}
-            onClose={handleModalClose}
-            onSubmit={handleModalSubmit}
-            initialStartDate={modalStartDate}
-            initialEndDate={modalEndDate}
-        />}
-
-        {/* Das Modal wird jetzt mit der Portal-Komponente gerendert */}
-        {appView === 'calendar' && selectedBooking && (
-            <Modal>
-                <div style={{backgroundColor: 'white', padding: '1.5rem', borderRadius: '0.5rem'}} className="shadow-xl max-w-md mx-4">
-                    {!showConfirmDelete ? (
-                        <>
-                            <h3 className="text-xl font-bold mb-4">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
-                            <p><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
-                            <p><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-orange-600' : 'text-red-600'}`}>
-                                {selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}
-                            </span></p>
-                            <p><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
-                            <p><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
-                            <div className="mt-6 flex justify-between items-center">
-                                <div> {/* Container for status change buttons */}
-                                    {selectedBooking.status === 'reserved' && (
-                                        <button
-                                            onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')}
-                                            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
-                                        >
-                                            Zu Buchung ändern
-                                        </button>
-                                    )}
-                                    {selectedBooking.status === 'booked' && (
-                                        <button
-                                            onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')}
-                                            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 mr-2"
-                                        >
-                                            Zu Reservierung ändern
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="flex space-x-4"> {/* Container for existing buttons */}
-                                    <button onClick={() => setShowConfirmDelete(true)} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Löschen</button>
-                                    <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Schließen</button>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <h3 className="text-xl font-bold mb-4">Löschen bestätigen</h3>
-                            <p>Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'} wirklich unwiderruflich löschen?</p>
-                            <div className="mt-6 flex justify-end space-x-4">
-                                <button onClick={handleDeleteBooking} className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800">Ja, löschen</button>
-                                <button onClick={() => setShowConfirmDelete(false)} className="px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400">Nein, abbrechen</button>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </Modal>
+        {appView === 'calendar' && (
+          <div className="flex-grow card-custom p-0 overflow-hidden" ref={calendarRef}> {/* Apply card style, remove padding for calendar */}
+            <Calendar
+              localizer={localizer}
+              events={events.filter(event => event.type !== 'publicHoliday')}
+              startAccessor="start"
+              endAccessor="end"
+              selectable
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent}
+              culture='de'
+              date={date}
+              view={calendarView}
+              onNavigate={setDate}
+              onView={setCalendarView}
+              messages={{
+                next: "Nächster",
+                previous: "Vorheriger",
+                today: "Heute",
+                month: "Monat",
+                week: "Woche",
+                day: "Tag",
+                agenda: "Agenda",
+                date: "Datum",
+                time: "Zeit",
+                event: "Ereignis",
+                noEventsInRange: "Keine Termine in diesem Zeitraum.",
+              }}
+              eventPropGetter={eventStyleGetter}
+              dayPropGetter={dayPropGetter}
+              onSelecting={handleSelecting}
+              components={{
+                month: { dateHeader: (props) => <CustomDateHeader {...props} allEvents={events} /> }
+              }}
+              style={{ height: '100%' }} // Calendar itself needs height 100%
+              className="rounded-lg" // Ensure calendar corners are rounded if card has padding
+            />
+          </div>
         )}
+
+        {appView === 'settings' && (
+          <div className="card-custom"> {/* Wrap settings in a card */}
+            <Settings user={user} onUpdateUser={handleUpdateUser} />
+          </div>
+        )}
+
+        {appView === 'calendar' && selectionStart && !selectionEnd && (
+          <div className="mt-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-center animate-pulse">
+            Startdatum ausgewählt: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong>. Bitte Enddatum auswählen oder Zeitraum ziehen.
+          </div>
+        )}
+        {appView === 'calendar' && selectionStart && selectionEnd && (
+          <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-center">
+            Ausgewählter Zeitraum: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong> bis <strong>{format(selectionEnd, 'dd.MM.yyyy')}</strong>.
+          </div>
+        )}
+      </div>
+
+      {appView === 'calendar' && <BookingConfirmationModal
+        isOpen={showBookingModal}
+        onClose={handleModalClose}
+        onSubmit={handleModalSubmit}
+        initialStartDate={modalStartDate}
+        initialEndDate={modalEndDate}
+      />}
+
+      {appView === 'calendar' && selectedBooking && (
+        <Modal>
+          <div className="card-custom max-w-md mx-4"> {/* Apply card style to modal content */}
+            {!showConfirmDelete ? (
+              <>
+                <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
+                <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
+                <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-yellow-600' : 'text-red-700'}`}>
+                  {selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}
+                </span></p>
+                <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
+                <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
+                <div className="mt-6 flex flex-wrap justify-between items-center gap-2">
+                  <div>
+                    {selectedBooking.status === 'reserved' && (
+                      <button
+                        onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')}
+                        className="btn bg-green-500 hover:bg-green-600 text-white" // More specific button style
+                      >
+                        Zu Buchung ändern
+                      </button>
+                    )}
+                    {selectedBooking.status === 'booked' && (
+                      <button
+                        onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')}
+                        className="btn bg-yellow-500 hover:bg-yellow-600 text-white" // More specific button style
+                      >
+                        Zu Reservierung ändern
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex space-x-2">
+                    <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
+                    <button onClick={() => setSelectedBooking(null)} className="btn btn-secondary">Schließen</button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-2xl font-bold mb-4 text-gray-800">Löschen bestätigen</h3>
+                <p className="mb-6">Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'} wirklich unwiderruflich löschen?</p>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button onClick={handleDeleteBooking} className="btn bg-red-700 hover:bg-red-800 text-white">Ja, löschen</button>
+                  <button onClick={() => setShowConfirmDelete(false)} className="btn btn-secondary">Nein, abbrechen</button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

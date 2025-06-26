@@ -36,12 +36,12 @@ function Login({ onLoginSuccess, setView }) {
 
   return (
     <div className="flex justify-center items-center mt-10">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center text-gray-800">Anmelden</h2>
+      <div className="card-custom w-full max-w-md p-8 space-y-6"> {/* Use card-custom for consistent card styling */}
+        <h2 className="text-3xl font-bold text-center text-gray-800">Anmelden</h2> {/* Larger heading */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {error && <p className="text-red-600 text-sm text-center font-medium">{error}</p>} {/* Enhanced error message style */}
           <div>
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1"> {/* Added margin-bottom to label */}
               E-Mail
             </label>
             <input
@@ -49,14 +49,15 @@ function Login({ onLoginSuccess, setView }) {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field" // Use global input-field style
               required
+              placeholder="ihre.email@example.com" // Added placeholder
             />
           </div>
           <div>
             <label
               htmlFor="password"
-              className="text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 mb-1" // Added margin-bottom to label
             >
               Passwort
             </label>
@@ -65,14 +66,15 @@ function Login({ onLoginSuccess, setView }) {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field" // Use global input-field style
               required
+              placeholder="********" // Added placeholder
             />
           </div>
           <div>
             <button
               type="submit"
-              className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="w-full btn btn-primary" // Use global button styles
             >
               Anmelden
             </button>
@@ -80,7 +82,10 @@ function Login({ onLoginSuccess, setView }) {
         </form>
         <p className="text-sm text-center text-gray-600">
           Noch kein Konto?{' '}
-          <button onClick={() => setView('register')} className="font-medium text-blue-600 hover:underline">
+          <button
+            onClick={() => setView('register')}
+            className="font-medium text-blue-600 hover:text-blue-700 hover:underline" // Enhanced link style
+          >
             Registrieren
           </button>
         </p>

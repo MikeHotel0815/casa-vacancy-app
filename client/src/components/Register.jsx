@@ -39,13 +39,13 @@ function Register({ setView }) {
 
   return (
     <div className="flex justify-center items-center mt-10">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center text-gray-800">Registrieren</h2>
+      <div className="card-custom w-full max-w-md p-8 space-y-6"> {/* Use card-custom for consistent card styling */}
+        <h2 className="text-3xl font-bold text-center text-gray-800">Registrieren</h2> {/* Larger heading */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          {success && <p className="text-green-500 text-sm text-center">{success}</p>}
+          {error && <p className="text-red-600 text-sm text-center font-medium">{error}</p>} {/* Enhanced error message style */}
+          {success && <p className="text-green-600 text-sm text-center font-medium">{success}</p>} {/* Enhanced success message style */}
           <div>
-            <label htmlFor="displayName-reg" className="text-sm font-medium text-gray-700">
+            <label htmlFor="displayName-reg" className="block text-sm font-medium text-gray-700 mb-1"> {/* Added margin-bottom to label */}
               Anzeigename
             </label>
             <input
@@ -53,12 +53,13 @@ function Register({ setView }) {
               id="displayName-reg"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field" // Use global input-field style
               required
+              placeholder="Ihr Anzeigename" // Added placeholder
             />
           </div>
           <div>
-            <label htmlFor="email-reg" className="text-sm font-medium text-gray-700">
+            <label htmlFor="email-reg" className="block text-sm font-medium text-gray-700 mb-1"> {/* Added margin-bottom to label */}
               E-Mail
             </label>
             <input
@@ -66,14 +67,15 @@ function Register({ setView }) {
               id="email-reg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field" // Use global input-field style
               required
+              placeholder="ihre.email@example.com" // Added placeholder
             />
           </div>
           <div>
             <label
               htmlFor="password-reg"
-              className="text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 mb-1" // Added margin-bottom to label
             >
               Passwort
             </label>
@@ -82,14 +84,15 @@ function Register({ setView }) {
               id="password-reg"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field" // Use global input-field style
               required
+              placeholder="Mindestens 6 Zeichen" // Added placeholder
             />
           </div>
           <div>
             <label
               htmlFor="confirm-password"
-              className="text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 mb-1" // Added margin-bottom to label
             >
               Passwort bestätigen
             </label>
@@ -98,14 +101,15 @@ function Register({ setView }) {
               id="confirm-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="input-field" // Use global input-field style
               required
+              placeholder="Passwort erneut eingeben" // Added placeholder
             />
           </div>
           <div>
             <button
               type="submit"
-              className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="w-full btn btn-primary" // Use global button styles
             >
               Konto erstellen
             </button>
@@ -113,7 +117,10 @@ function Register({ setView }) {
         </form>
         <p className="text-sm text-center text-gray-600">
           Bereits ein Konto?{' '}
-          <button onClick={() => setView('login')} className="font-medium text-blue-600 hover:underline">
+          <button
+            onClick={() => setView('login')}
+            className="font-medium text-blue-600 hover:text-blue-700 hover:underline" // Enhanced link style
+          >
             Anmelden
           </button>
         </p>

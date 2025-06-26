@@ -65,50 +65,55 @@ const BookingConfirmationModal = ({
 
   return (
     <ModalDialog onClose={onClose}>
-      <h2 className="text-xl font-semibold mb-4">Buchung bestätigen oder reservieren</h2>
-      <div className="mb-4">
-        <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-          Startdatum:
-        </label>
-        <input
-          type="date"
-          id="startDate"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-      <div className="mb-6">
-        <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-          Enddatum:
-        </label>
-        <input
-          type="date"
-          id="endDate"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-      <div className="flex justify-end space-x-3">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none"
-        >
-          Abbrechen
-        </button>
-        <button
-          onClick={() => handleSubmit('reserved')}
-          className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-        >
-          Reservieren
-        </button>
-        <button
-          onClick={() => handleSubmit('booked')}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Buchen
-        </button>
+      {/* Apply card-custom for consistent padding and shadow, though ModalDialog provides its own */}
+      <div className="p-1"> {/* Minimal padding, ModalDialog has its own structure */}
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Buchung bestätigen oder reservieren</h2> {/* Enhanced heading */}
+        <div className="space-y-4"> {/* Add space between form elements */}
+          <div>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+              Startdatum:
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="input-field" // Use global input-field style
+            />
+          </div>
+          <div>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+              Enddatum:
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="input-field" // Use global input-field style
+            />
+          </div>
+        </div>
+        <div className="flex justify-end space-x-3 mt-8"> {/* Increased top margin for button group */}
+          <button
+            onClick={onClose}
+            className="btn btn-secondary" // Use global button styles
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={() => handleSubmit('reserved')}
+            className="btn bg-yellow-500 hover:bg-yellow-600 text-white" // Specific style for reservieren
+          >
+            Reservieren
+          </button>
+          <button
+            onClick={() => handleSubmit('booked')}
+            className="btn btn-primary" // Use global button styles for main action
+          >
+            Buchen
+          </button>
+        </div>
       </div>
     </ModalDialog>
   );
