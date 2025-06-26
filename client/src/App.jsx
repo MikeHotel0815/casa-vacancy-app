@@ -651,7 +651,8 @@ const handleChangeBookingStatus = async (bookingToUpdate, newStatus) => {
             {localStorage.getItem('pageTitle') || 'Belegungskalender'}
           </h1>
           <div className="flex items-center space-x-3 mt-2 md:mt-0">
-            <span className="text-sm font-medium" style={{ color: 'var(--background-text-color)' }}>
+            <span className="text-sm font-medium mr-4" style={{ color: 'var(--background-text-color)' }}>
+              {/* Added mr-4 for right margin */}
               Angemeldet als: {user.displayName}
             </span>
             <button
