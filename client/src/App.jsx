@@ -781,8 +781,10 @@ const handleMarkNotificationAsRead = async (notificationId) => {
               );
             });
             if (isBookedAndOverlapped) {
-              style.border = `2px dashed ${angefragtColor}`; // Use 'angefragt' color for the dashed border
-              style.boxShadow = `0 0 5px ${angefragtColor}`;
+              // TEST STYLING:
+              style.border = `5px solid limegreen`;
+              style.backgroundColor = 'red'; // Should be very obvious
+              style.boxShadow = `0 0 10px yellow`;
             }
             break;
           case 'reserved':
@@ -791,15 +793,20 @@ const handleMarkNotificationAsRead = async (notificationId) => {
             style.fontWeight = 'normal';
             style.opacity = 0.75;
             // Check if this 'reserved' event is being overlapped
-            const isReservedAndOverlapped = userNotifications.some(n =>
-              n.type === 'overlap_request' &&
-              n.response === 'pending' &&
-              n.recipientUserId === user?.id &&
-              n.relatedBooking?.originalBookingId === event.id
-            );
+            const isReservedAndOverlapped = userNotifications.some(n => {
+              return (
+                n.type === 'overlap_request' &&
+                n.response === 'pending' &&
+                n.recipientUserId === user?.id &&
+                n.relatedBooking &&
+                n.relatedBooking.originalBookingId === event.id
+              );
+            });
             if (isReservedAndOverlapped) {
-              style.border = `2px dashed ${angefragtColor}`;
-              style.boxShadow = `0 0 5px ${angefragtColor}`;
+              // TEST STYLING:
+              style.border = `5px solid limegreen`;
+              style.backgroundColor = 'red'; // Should be very obvious
+              style.boxShadow = `0 0 10px yellow`;
             }
             break;
           case 'angefragt':
