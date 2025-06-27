@@ -1,5 +1,5 @@
 // Importiert notwendige Teile von Sequelize
-const { DataTypes } = require('sequelize');
+const { DataTypes, UUIDV4 } = require('sequelize');
 
 // Importiert die konfigurierte Sequelize-Instanz und das User-Modell
 const { sequelize } = require('../config/database');
@@ -25,10 +25,10 @@ const Booking = sequelize.define('Booking', {
   },
   status: { // Hinzugefügtes Feld für den Buchungsstatus
     type: DataTypes.STRING,
-    allowNull: false, // Wieder auf false gesetzt
+    allowNull: false,
     defaultValue: 'booked',
-    validate: { // Validierung reaktiviert
-      isIn: [['booked', 'reserved']],
+    validate: {
+      isIn: [['booked', 'reserved', 'angefragt', 'cancelled']], // 'angefragt' und 'cancelled' hinzugefügt
     },
   },
   userId: {
@@ -38,6 +38,25 @@ const Booking = sequelize.define('Booking', {
       model: User, // Dies ist die Referenz zum User-Modell
       key: 'id',   // Verknüpft mit dem 'id'-Feld des User-Modells
     }
+  },
+  originalBookingId: { // Für 'angefragt' Status, verweist auf die primäre Buchung
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Bookings', // Name der Tabelle
+      key: 'id',
+    },
+    onDelete: 'SET NULL', // Wenn die ursprüngliche Buchung gelöscht wird, wird dieses Feld auf NULL gesetzt
+    onUpdate: 'CASCADE',
+  },
+  isSplit: { // Zeigt an, ob diese Buchung ein Teil einer aufgeteilten Anfrage ist
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+  },
+  originalRequestId: { // Eindeutige ID für die ursprüngliche Buchungsanfrage des Benutzers
+    type: DataTypes.UUID,
+    allowNull: true, // Kann null sein für Buchungen, die vor dieser Logik erstellt wurden
   }
 }, {
   // Model-Optionen
@@ -47,6 +66,12 @@ const Booking = sequelize.define('Booking', {
 // Definiert die "Eine-zu-Viele"-Beziehung: Ein User kann viele Bookings haben.
 User.hasMany(Booking, { foreignKey: 'userId' });
 Booking.belongsTo(User, { foreignKey: 'userId' });
+
+// Self-referencing Foreign Key für originalBookingId
+// Eine Buchung (angefragt) kann sich auf eine andere (originale) Buchung beziehen.
+Booking.belongsTo(Booking, { as: 'OriginalBooking', foreignKey: 'originalBookingId', constraints: false, allowNull: true });
+Booking.hasMany(Booking, { as: 'OverlapRequests', foreignKey: 'originalBookingId', constraints: false, allowNull: true });
+
 
 // Exportiert das Booking-Modell
 module.exports = Booking;

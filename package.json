@@ -1,1 +1,1 @@
-{ "name": "root-app", "private": true }
+{"name":"root-app","private":true,"dependencies":{"uuid":"^11.1.0"}}

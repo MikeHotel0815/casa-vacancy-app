@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/bookings');
 const holidayRoutes = require('./routes/holidays');
 const userRoutes = require('./routes/users'); // Importiere die neuen Benutzerrouten
+const notificationRoutes = require('./routes/notifications'); // Importiere die neuen Notification-Routen
 
 // --- Initialisierung ---
 const app = express();
@@ -31,6 +32,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/holidays', holidayRoutes);
 // Alle Benutzer-Routen werden unter /api/users erreichbar sein
 app.use('/api/users', userRoutes);
+// Alle Notification-Routen werden unter /api/notifications erreichbar sein
+app.use('/api/notifications', notificationRoutes);
 
 // --- Server-Start und Datenbank-Synchronisation ---
 const startServer = async () => {
