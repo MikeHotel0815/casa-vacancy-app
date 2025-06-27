@@ -1,5 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+:root {
+  /* Color Scheme Variables */
+  --primary-color: #2563eb; /* Default: blue-600 */
+  --primary-text-color: #ffffff; /* Default: white */
+  --secondary-color: #dc2626; /* Default: red-600 */
+  --secondary-text-color: #ffffff; /* Default: white */
+  --background-color: #f9fafb; /* Default: gray-50 */
+  --background-text-color: #111827; /* Default: gray-800 */
+
+  /* Calendar Event Colors */
+  --public-holiday-color: #2563eb; /* Default: blue-600 */
+  --public-holiday-text-color: #ffffff; /* Default: white */
+  --school-holiday-color: #a8a29e; /* Default: stone-400 */
+  --school-holiday-text-color: #ffffff; /* Default: white */
+  --booked-color: #dc2626; /* Default: red-600 */
+  --booked-text-color: #ffffff; /* Default: white */
+  --angefragt-color: #fbbf24; /* Default: amber-400 */
+  --angefragt-text-color: #422006; /* Darker text for amber */
+  --cancelled-color: #9ca3af; /* Default: gray-400 */
+  --cancelled-text-color: #4b5563; /* Default: gray-600 */
+
+  /* Notification Bell (can be customized if needed) */
+  --notification-badge-background: #ef4444; /* Default: red-500 */
+  --notification-badge-text-color: #ffffff; /* Default: white */
+
+  /* Overlap Indication Styles */
+  --overlap-indicator-stripe-color: rgba(255, 193, 7, 0.5); /* Amber 500 with 50% opacity */
+  --overlap-indicator-border-color: #FFC107; /* Amber 500 */
+}
+
 @tailwind base;
 
 body {

@@ -736,15 +736,15 @@ const handleMarkNotificationAsRead = async (notificationId) => {
   const eventStyleGetter = (event) => {
     let style = {
       borderRadius: '5px',
-      // opacity: 0.8, // Default opacity for events - will be handled by specific types or RGBA alpha
       border: '0px',
       display: 'block',
       fontWeight: 'bold',
-      // Admins can click any booking, users only their own.
       cursor: (event.type === 'booking' && user && (user.isAdmin || String(event.userId) === String(user.id))) ? 'pointer' : 'default',
     };
-
     const docStyle = getComputedStyle(document.documentElement);
+
+    let isBookedAndOverlapped = false;
+    let isReservedAndOverlapped = false;
 
     // Helper function to convert hex to rgba
     const hexToRgba = (hex, alpha) => {
@@ -757,8 +757,10 @@ const handleMarkNotificationAsRead = async (notificationId) => {
 
     const bookedBaseColor = docStyle.getPropertyValue('--booked-color').trim() || '#dc2626'; // Red-600
     const bookedTextColor = docStyle.getPropertyValue('--booked-text-color').trim() || '#ffffff';
-    const angefragtColor = docStyle.getPropertyValue('--angefragt-color') || '#fbbf24'; // Tailwind amber-400
-    const angefragtTextColor = docStyle.getPropertyValue('--angefragt-text-color') || '#422006'; // Darker text for amber
+    // const angefragtColor = docStyle.getPropertyValue('--angefragt-color') || '#fbbf24'; // Tailwind amber-400
+    // const angefragtTextColor = docStyle.getPropertyValue('--angefragt-text-color') || '#422006'; // Darker text for amber
+    // Define these within the switch case for 'angefragt' or ensure they are globally available if used elsewhere.
+    // For now, direct use of theme colors for 'angefragt' is in its specific case block.
     const cancelledColor = docStyle.getPropertyValue('--cancelled-color') || '#9ca3af'; // Tailwind gray-400
     const cancelledTextColor = docStyle.getPropertyValue('--cancelled-text-color') || '#4b5563'; // Tailwind gray-600
 
@@ -770,21 +772,19 @@ const handleMarkNotificationAsRead = async (notificationId) => {
             style.backgroundColor = bookedBaseColor;
             style.color = bookedTextColor;
             style.opacity = 0.9;
-            // Check if this 'booked' event is being overlapped by a pending request
-            const isBookedAndOverlapped = userNotifications.some(n => {
+            isBookedAndOverlapped = userNotifications.some(n => {
               return (
                 n.type === 'overlap_request' &&
                 n.response === 'pending' &&
                 n.recipientUserId === user?.id &&
-                n.relatedBooking && // Ensure relatedBooking exists
+                n.relatedBooking &&
                 n.relatedBooking.originalBookingId === event.id
               );
             });
             if (isBookedAndOverlapped) {
-              // TEST STYLING:
-              style.border = `5px solid limegreen`;
-              style.backgroundColor = 'red'; // Should be very obvious
-              style.boxShadow = `0 0 10px yellow`;
+              style.border = `2px solid var(--overlap-indicator-border-color)`;
+              style.backgroundImage = `repeating-linear-gradient(45deg, transparent, transparent 10px, var(--overlap-indicator-stripe-color) 10px, var(--overlap-indicator-stripe-color) 20px)`;
+              style.boxShadow = `0 0 5px var(--overlap-indicator-border-color)`; // Optional: subtle glow
             }
             break;
           case 'reserved':
@@ -792,8 +792,7 @@ const handleMarkNotificationAsRead = async (notificationId) => {
             style.color = bookedTextColor;
             style.fontWeight = 'normal';
             style.opacity = 0.75;
-            // Check if this 'reserved' event is being overlapped
-            const isReservedAndOverlapped = userNotifications.some(n => {
+            isReservedAndOverlapped = userNotifications.some(n => {
               return (
                 n.type === 'overlap_request' &&
                 n.response === 'pending' &&
@@ -803,18 +802,20 @@ const handleMarkNotificationAsRead = async (notificationId) => {
               );
             });
             if (isReservedAndOverlapped) {
-              // TEST STYLING:
-              style.border = `5px solid limegreen`;
-              style.backgroundColor = 'red'; // Should be very obvious
-              style.boxShadow = `0 0 10px yellow`;
+              style.border = `2px solid var(--overlap-indicator-border-color)`;
+              style.backgroundImage = `repeating-linear-gradient(45deg, transparent, transparent 10px, var(--overlap-indicator-stripe-color) 10px, var(--overlap-indicator-stripe-color) 20px)`;
+              style.boxShadow = `0 0 5px var(--overlap-indicator-border-color)`; // Optional: subtle glow
             }
             break;
           case 'angefragt':
-            style.backgroundColor = angefragtColor;
-            style.color = angefragtTextColor;
-            style.opacity = 0.8;
-            // Optional: Add a striped background for 'angefragt'
-            style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.2) 5px, rgba(255,255,255,0.2) 10px)';
+            { // Added block scope for angefragtColor, angefragtTextColor
+              const angefragtColor = docStyle.getPropertyValue('--angefragt-color').trim() || '#fbbf24'; // Tailwind amber-400
+              const angefragtTextColor = docStyle.getPropertyValue('--angefragt-text-color').trim() || '#422006'; // Darker text for amber
+              style.backgroundColor = angefragtColor;
+              style.color = angefragtTextColor;
+              style.opacity = 0.8;
+              style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.2) 5px, rgba(255,255,255,0.2) 10px)';
+            }
             break;
           case 'cancelled':
             style.backgroundColor = cancelledColor;
