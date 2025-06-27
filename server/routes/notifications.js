@@ -33,20 +33,26 @@ router.post('/:id/respond', authMiddleware, async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const notificationId = req.params.id;
-    const { response } = req.body; // Expecting "acknowledged" or "rejected_by_owner"
+    const { action } = req.body; // Expecting "approved" or "rejected"
 
-    if (!['acknowledged', 'rejected_by_owner'].includes(response)) {
+    if (!['approved', 'rejected'].includes(action)) {
       await transaction.rollback();
-      return res.status(400).json({ msg: 'Invalid response value. Must be "acknowledged" or "rejected_by_owner".' });
+      return res.status(400).json({ msg: 'Invalid action value. Must be "approved" or "rejected".' });
     }
 
     const notification = await Notification.findOne({
       where: {
         id: notificationId,
-        recipientUserId: req.user.id, // Ensure the user owns this notification
-        type: 'overlap_request', // Only for overlap requests
+        recipientUserId: req.user.id,
+        type: 'overlap_request',
       },
-      include: [{ model: Booking, as: 'relatedBooking' }], // Include the 'angefragt' booking
+      include: [
+        {
+          model: Booking,
+          as: 'relatedBooking', // This is the 'angefragt' booking
+          include: [{ model: User, as: 'User', attributes: ['id', 'displayName'] }] // User who made the 'angefragt' booking
+        }
+      ],
       transaction
     });
 
@@ -61,47 +67,144 @@ router.post('/:id/respond', authMiddleware, async (req, res) => {
     }
 
     if (!notification.relatedBooking) {
-        await transaction.rollback();
-        // This case should ideally not happen if data integrity is maintained
-        return res.status(404).json({ msg: 'Associated booking for this notification not found.' });
+      await transaction.rollback();
+      return res.status(404).json({ msg: 'Associated "angefragt" booking for this notification not found.' });
+    }
+    if (notification.relatedBooking.status !== 'angefragt') {
+      await transaction.rollback();
+      return res.status(400).json({ msg: 'The associated booking is not in "angefragt" status.' });
     }
 
-    notification.response = response;
-    notification.isRead = true; // Mark as read when responded to
-    await notification.save({ transaction });
-
     const angefragtBooking = notification.relatedBooking;
+    const requester = angefragtBooking.User; // User who made the 'angefragt' request
 
-    if (response === 'rejected_by_owner') {
-      // Change status of the 'angefragt' booking to 'cancelled'
-      if (angefragtBooking.status === 'angefragt') {
-        angefragtBooking.status = 'cancelled'; // Or delete it, depending on desired behavior
+    notification.isRead = true; // Mark as read when responded to
+
+    if (action === 'rejected') {
+      notification.response = 'rejected_by_owner';
+      await notification.save({ transaction });
+
+      angefragtBooking.status = 'cancelled';
+      await angefragtBooking.save({ transaction });
+
+      // Notify the requester about the rejection
+      await Notification.create({
+        recipientUserId: angefragtBooking.userId,
+        type: 'overlap_rejected',
+        message: `Ihre Buchungsanfrage für ${angefragtBooking.startDate} bis ${angefragtBooking.endDate} wurde von ${req.user.displayName} abgelehnt.`,
+        relatedBookingId: angefragtBooking.id,
+      }, { transaction });
+
+      await transaction.commit();
+      return res.json({ message: 'Buchungsanfrage abgelehnt.', notification, angefragtBooking });
+
+    } else if (action === 'approved') {
+      notification.response = 'acknowledged'; // 'acknowledged' by primary booker means approved for the requester
+      await notification.save({ transaction });
+
+      const primaryBookingId = angefragtBooking.originalBookingId;
+      if (!primaryBookingId) {
+        await transaction.rollback();
+        return res.status(500).json({ msg: 'Fehler: "angefragt" Buchung hat keine originalBookingId.' });
+      }
+
+      const primaryBooking = await Booking.findByPk(primaryBookingId, { transaction });
+      if (!primaryBooking) {
+        await transaction.rollback();
+        // This could happen if the primary booking was deleted after the 'angefragt' was created.
+        // In this scenario, the 'angefragt' booking can simply become 'booked'.
+        angefragtBooking.status = 'booked';
+        angefragtBooking.originalBookingId = null; // No longer contingent
         await angefragtBooking.save({ transaction });
 
-        // Optionally, notify the user who made the 'angefragt' booking about the rejection
         await Notification.create({
           recipientUserId: angefragtBooking.userId,
-          type: 'overlap_rejected',
-          message: `Ihre Buchungsanfrage (${angefragtBooking.startDate} bis ${angefragtBooking.endDate}) wurde von ${req.user.displayName} abgelehnt.`,
+          type: 'overlap_confirmed',
+          message: `Ihre Buchungsanfrage für ${angefragtBooking.startDate} bis ${angefragtBooking.endDate} wurde bestätigt, da die ursprüngliche Buchung nicht mehr existiert.`,
           relatedBookingId: angefragtBooking.id,
-          isRead: false,
         }, { transaction });
+
+        await transaction.commit();
+        return res.json({ message: 'Buchungsanfrage bestätigt (primäre Buchung existierte nicht mehr).', notification, angefragtBooking });
       }
-    } else if (response === 'acknowledged') {
-      // The 'angefragt' booking status remains 'angefragt'. This is just an acknowledgment.
-      // Optionally, notify the user who made the 'angefragt' booking that it was acknowledged (but still not confirmed)
-       await Notification.create({
-          recipientUserId: angefragtBooking.userId,
-          type: 'overlap_acknowledged',
-          message: `Ihre Buchungsanfrage (${angefragtBooking.startDate} bis ${angefragtBooking.endDate}) wurde von ${req.user.displayName} zur Kenntnis genommen, bleibt aber weiterhin angefragt.`,
-          relatedBookingId: angefragtBooking.id,
-          isRead: false,
+
+      // Primary booking exists, now adjust it.
+      const angefragtStart = new Date(angefragtBooking.startDate);
+      const angefragtEnd = new Date(angefragtBooking.endDate);
+      const primaryStart = new Date(primaryBooking.startDate);
+      const primaryEnd = new Date(primaryBooking.endDate);
+
+      // Case 1: Angefragt booking completely covers the primary booking
+      if (angefragtStart <= primaryStart && angefragtEnd >= primaryEnd) {
+        primaryBooking.status = 'cancelled'; // Or delete: await primaryBooking.destroy({ transaction });
+        await primaryBooking.save({transaction});
+      }
+      // Case 2: Angefragt booking is at the start of the primary booking
+      else if (angefragtStart <= primaryStart && angefragtEnd < primaryEnd) {
+        primaryBooking.startDate = angefragtBooking.endDate; // endDate is exclusive, so next day is correct
+        await primaryBooking.save({transaction});
+      }
+      // Case 3: Angefragt booking is at the end of the primary booking
+      else if (angefragtStart > primaryStart && angefragtEnd >= primaryEnd) {
+        primaryBooking.endDate = angefragtBooking.startDate; // startDate is inclusive, so previous day is correct
+        await primaryBooking.save({transaction});
+      }
+      // Case 4: Angefragt booking is in the middle of the primary booking (split)
+      else if (angefragtStart > primaryStart && angefragtEnd < primaryEnd) {
+        const originalPrimaryEndDate = primaryBooking.endDate;
+        primaryBooking.endDate = angefragtBooking.startDate; // Shorten the first part
+        await primaryBooking.save({transaction});
+
+        // Create a new booking for the second part
+        await Booking.create({
+          startDate: angefragtBooking.endDate,
+          endDate: originalPrimaryEndDate,
+          userId: primaryBooking.userId,
+          displayName: primaryBooking.displayName,
+          status: primaryBooking.status, // Keep original status
+          originalRequestId: primaryBooking.originalRequestId, // Keep track of original request if it was part of one
+          isSplit: true, // This new segment is a result of a split
         }, { transaction });
+      } else {
+        // This should not happen if overlap logic is correct, but as a fallback:
+        await transaction.rollback();
+        return res.status(500).json({msg: "Logikfehler bei der Anpassung der primären Buchung."});
+      }
+
+      // Validate primary booking(s) after modification (ensure startDate < endDate)
+      if (new Date(primaryBooking.startDate) >= new Date(primaryBooking.endDate) && primaryBooking.status !== 'cancelled') {
+         // If modification made it invalid (e.g. start = end), consider it fully replaced, so cancel it.
+        if (primaryBooking.status !== 'cancelled') { // ensure not already cancelled
+            primaryBooking.status = 'cancelled';
+            await primaryBooking.save({ transaction });
+        }
+      }
+
+
+      // Update the 'angefragt' booking to 'booked'
+      angefragtBooking.status = 'booked';
+      angefragtBooking.originalBookingId = null; // No longer contingent
+      await angefragtBooking.save({ transaction });
+
+      // Notify the requester
+      await Notification.create({
+        recipientUserId: angefragtBooking.userId,
+        type: 'overlap_confirmed',
+        message: `Ihre Buchungsanfrage (${angefragtBooking.startDate} bis ${angefragtBooking.endDate}) wurde von ${req.user.displayName} bestätigt.`,
+        relatedBookingId: angefragtBooking.id,
+      }, { transaction });
+
+      // Notify the primary booker (self-notification for action confirmation)
+      await Notification.create({
+        recipientUserId: req.user.id, // The one who approved
+        type: 'overlap_resolution_notice',
+        message: `Sie haben die überschneidende Buchungsanfrage von ${requester.displayName} (${angefragtBooking.startDate} bis ${angefragtBooking.endDate}) genehmigt. Ihre ursprüngliche Buchung wurde entsprechend angepasst.`,
+        relatedBookingId: primaryBooking.id, // Relate to their original (now possibly modified) booking
+      }, { transaction });
     }
 
     await transaction.commit();
-    // Return the updated notification, and potentially the affected booking
-    res.json({ notification, affectedBooking: angefragtBooking });
+    res.json({ message: `Aktion "${action}" erfolgreich durchgeführt.`, notification, affectedBooking: angefragtBooking });
 
   } catch (error) {
     await transaction.rollback();
