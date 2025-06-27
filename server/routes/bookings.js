@@ -134,6 +134,7 @@ async function processAndCreateBookings({
             userId: finalUserId, displayName: finalDisplayName, status: 'angefragt', originalRequestId, isSplit: true, originalBookingId: conflict.id,
           }, { transaction });
           createdBookingSegments.push(angefragtSegment);
+          console.log(`[bookings.js] AngefragtSegment erstellt: User ${finalUserId}, Start: ${overlapStart.toISOString().split('T')[0]}, Ende: ${overlapEnd.toISOString().split('T')[0]}, origBookingId: ${conflict.id}`);
           await Notification.create({
             recipientUserId: conflict.userId, type: 'overlap_request',
             message: `Eine neue Buchungsanfrage von ${finalDisplayName} (${overlapStart.toISOString().split('T')[0]} bis ${overlapEnd.toISOString().split('T')[0]}) überschneidet sich mit Ihrer Buchung (${conflict.startDate} bis ${conflict.endDate}).`,

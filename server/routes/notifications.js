@@ -78,6 +78,8 @@ router.post('/:id/respond', authMiddleware, async (req, res) => {
     const angefragtBooking = notification.relatedBooking;
     const requester = angefragtBooking.User; // User who made the 'angefragt' request
 
+    console.log(`[notifications.js respond] Geladene angefragtBooking ID ${angefragtBooking.id}: Start ${angefragtBooking.startDate}, Ende ${angefragtBooking.endDate}, Status ${angefragtBooking.status}`);
+
     notification.isRead = true; // Mark as read when responded to
 
     if (action === 'rejected') {
@@ -85,6 +87,7 @@ router.post('/:id/respond', authMiddleware, async (req, res) => {
       await notification.save({ transaction });
 
       angefragtBooking.status = 'cancelled';
+      console.log(`[notifications.js respond] Vor Speichern (rejected): angefragtBooking ID ${angefragtBooking.id} wird zu Status ${angefragtBooking.status}`);
       await angefragtBooking.save({ transaction });
 
       // Notify the requester about the rejection
@@ -186,6 +189,7 @@ router.post('/:id/respond', authMiddleware, async (req, res) => {
       // Update the 'angefragt' booking to 'booked'
       angefragtBooking.status = 'booked';
       angefragtBooking.originalBookingId = null; // No longer contingent
+      console.log(`[notifications.js respond] Vor Speichern (approved): angefragtBooking ID ${angefragtBooking.id} (${angefragtBooking.startDate} - ${angefragtBooking.endDate}) wird zu Status ${angefragtBooking.status}`);
       await angefragtBooking.save({ transaction });
 
       // Notify the requester
