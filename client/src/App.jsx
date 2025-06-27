@@ -598,6 +598,25 @@ const handleMarkNotificationAsRead = async (notificationId) => {
   }
 };
 
+const handleDeleteNotification = async (notificationId) => {
+  if (!token || !notificationId) {
+    alert("Löschen nicht möglich. Fehlende Informationen.");
+    return;
+  }
+  try {
+    await axios.delete(`${API_URL}/notifications/${notificationId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setUserNotifications(prevNotifications =>
+      prevNotifications.filter(n => n.id !== notificationId)
+    );
+    // Optional: alert('Benachrichtigung gelöscht.');
+  } catch (error) {
+    console.error("Fehler beim Löschen der Benachrichtigung:", error);
+    alert(error.response?.data?.msg || "Benachrichtigung konnte nicht gelöscht werden.");
+  }
+};
+
 
   const handleSelecting = (range) => {
     // This function is called when the user is dragging to select a range.
@@ -900,7 +919,7 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                 )}
               </button>
               {showNotificationsDropdown && (
-                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-96 max-h-[500px] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
                   {userNotifications.length === 0 ? (
                     <p className="p-4 text-sm text-gray-500">Keine neuen Benachrichtigungen.</p>
                   ) : (
@@ -909,10 +928,24 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                         <li
                           key={notification.id}
                           className={`p-3 border-b border-gray-200 hover:bg-gray-50 ${!notification.isRead ? 'font-semibold bg-blue-50' : ''}`}
-                          onClick={() => !notification.isRead && handleMarkNotificationAsRead(notification.id)}
+                          // onClick for marking as read is kept, but delete button will stop propagation
                         >
-                          <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
-                          <p className="text-xs text-gray-500">{format(new Date(notification.createdAt), 'dd.MM.yyyy HH:mm')}</p>
+                          <div className="flex justify-between items-start">
+                            <div
+                              className="flex-grow cursor-pointer"
+                              onClick={() => !notification.isRead && handleMarkNotificationAsRead(notification.id)}
+                            >
+                              <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
+                              <p className="text-xs text-gray-500">{format(new Date(notification.createdAt), 'dd.MM.yyyy HH:mm')}</p>
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteNotification(notification.id); }}
+                              className="ml-2 text-red-500 hover:text-red-700 font-bold text-lg leading-none p-1"
+                              aria-label="Benachrichtigung löschen"
+                            >
+                              &times;
+                            </button>
+                          </div>
                           {notification.type === 'overlap_request' && notification.response === 'pending' && (
                             <div className="mt-2 flex space-x-2">
                               <button
