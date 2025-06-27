@@ -1,4 +1,6 @@
-[
+{
+  "lastFetched": "2023-01-01T00:00:00.000Z",
+  "holidays": [
   {
     "name": "Winterferien",
     "start": "2024-02-19T00:00:00.000Z",
@@ -63,3 +65,4 @@
     "slug": "weihnachtsferien"
   }
 ]
+}
