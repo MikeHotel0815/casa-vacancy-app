@@ -771,12 +771,15 @@ const handleMarkNotificationAsRead = async (notificationId) => {
             style.color = bookedTextColor;
             style.opacity = 0.9;
             // Check if this 'booked' event is being overlapped by a pending request
-            const isBookedAndOverlapped = userNotifications.some(n =>
-              n.type === 'overlap_request' &&
-              n.response === 'pending' &&
-              n.recipientUserId === user?.id && // Current user is the one who needs to respond
-              n.relatedBooking?.originalBookingId === event.id // The 'angefragt' booking points to this event
-            );
+            const isBookedAndOverlapped = userNotifications.some(n => {
+              return (
+                n.type === 'overlap_request' &&
+                n.response === 'pending' &&
+                n.recipientUserId === user?.id &&
+                n.relatedBooking && // Ensure relatedBooking exists
+                n.relatedBooking.originalBookingId === event.id
+              );
+            });
             if (isBookedAndOverlapped) {
               style.border = `2px dashed ${angefragtColor}`; // Use 'angefragt' color for the dashed border
               style.boxShadow = `0 0 5px ${angefragtColor}`;
