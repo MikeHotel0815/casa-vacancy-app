@@ -102,7 +102,7 @@ const Modal = ({ children }) => {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: '#374151', // Undurchsichtiges Dunkelgrau (entspricht Tailwind gray-700)
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -943,10 +943,10 @@ const handleDeleteNotification = async (notificationId) => {
                                 e.stopPropagation(); // Prevent click on li
                                 handleDeleteNotification(notification.id);
                               }}
-                              className="text-gray-400 hover:text-red-500 ml-2 p-1"
+                              className="text-black hover:text-red-700 ml-2 p-1" // Changed to text-black and darker red
                               title="Benachrichtigung löschen"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"> {/* Increased size and strokeWidth */}
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
