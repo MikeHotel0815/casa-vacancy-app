@@ -901,7 +901,10 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                 )}
               </button>
               {showNotificationsDropdown && (
-                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                <div
+                  ref={notificationsDropdownRef}
+                  className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white bg-opacity-100 border border-gray-300 rounded-md shadow-lg z-20"
+                >
                   {userNotifications.length === 0 ? (
                     <p className="p-4 text-sm text-gray-500">Keine neuen Benachrichtigungen.</p>
                   ) : (
