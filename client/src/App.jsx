@@ -238,14 +238,14 @@ function App() {
             status: booking.status,
           };
         });
-        const formattedPublicHolidays = publicHolidaysRes.data.map(holiday => ({
-          title: holiday.localName,
-          start: new Date(holiday.date),
-          end: new Date(holiday.date),
-          allDay: true,
-          type: 'booking',
-          status: booking.status,
-        }));
+        // const formattedPublicHolidays = publicHolidaysRes.data.map(holiday => ({ // This was the duplicated line
+        //   title: holiday.localName,
+        //   start: new Date(holiday.date),
+        //   end: new Date(holiday.date),
+        //   allDay: true,
+        //   type: 'booking', // This was also incorrect, should be 'publicHoliday'
+        //   status: booking.status, // And this was incorrect context
+        // }));
         const formattedPublicHolidays = publicHolidaysRes.data.map(holiday => ({
           title: holiday.localName,
           start: new Date(holiday.date),
