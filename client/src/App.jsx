@@ -320,9 +320,10 @@ function App() {
           const response = await axios.get(`${API_URL}/notifications`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          console.log('[CLIENT LOG] Fetched notifications:', response.data);
           setUserNotifications(response.data);
         } catch (error) {
-          console.error('Fehler beim Laden der Benachrichtigungen:', error);
+          console.error('[CLIENT LOG] Fehler beim Laden der Benachrichtigungen:', error);
         }
       } else {
         setUserNotifications([]);
@@ -730,6 +731,33 @@ const handleMarkNotificationAsRead = async (notificationId) => {
         }
       }
     }
+
+    // ADDING LOGS HERE (Re-activating for debugging)
+    if (event.type === 'booking' && (event.status === 'booked' || event.status === 'reserved')) {
+      const eventCloneForLogging = JSON.parse(JSON.stringify(event));
+      console.log('Event being styled:', eventCloneForLogging);
+      console.log('Current User ID:', user?.id);
+
+      const relevantNotifications = userNotifications.filter(n =>
+        n.type === 'overlap_request' &&
+        n.response === 'pending' &&
+        n.recipientUserId === user?.id &&
+        n.relatedBooking
+      );
+
+      if (relevantNotifications.length > 0) {
+          const relevantNotificationsClone = JSON.parse(JSON.stringify(relevantNotifications));
+          console.log(`Relevant pending overlap_request notifications for user ${user?.id}:`, relevantNotificationsClone);
+          relevantNotifications.forEach(n => {
+            if (n.relatedBooking) {
+                console.log(`For event ID ${event.id} ("${event.title}"): Notification (ID ${n.id}) has relatedBooking.originalBookingId: ${n.relatedBooking.originalBookingId}`);
+            }
+          });
+      }
+      const isOverlappedForLogging = (event.status === 'booked' && isBookedAndOverlapped) || (event.status === 'reserved' && isReservedAndOverlapped);
+      console.log(`Is event ${event.id} ("${event.title}") considered overlapped: ${isOverlappedForLogging}`);
+    }
+
     return { style };
   };
 

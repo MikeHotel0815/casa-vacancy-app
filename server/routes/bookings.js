@@ -132,6 +132,7 @@ async function processAndCreateBookings({
             message: `Eine neue Buchungsanfrage von ${finalDisplayName} (${overlapStart.toISOString().split('T')[0]} bis ${overlapEnd.toISOString().split('T')[0]}) überschneidet sich mit Ihrer Buchung (${conflict.startDate} bis ${conflict.endDate}).`,
             relatedBookingId: angefragtSegment.id, overlapStartTime: overlapStart, overlapEndTime: overlapEnd,
           }, { transaction });
+          console.log(`[SERVER LOG] Overlap notification created for recipientUserId: ${conflict.userId}, relatedBookingId (angefragtSegmentId): ${angefragtSegment.id}, originalConflictId: ${conflict.id}`);
         }
       }
       currentStartDate = new Date(Math.max(currentStartDate.getTime(), overlapEnd.getTime()));
