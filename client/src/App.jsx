@@ -598,6 +598,28 @@ const handleMarkNotificationAsRead = async (notificationId) => {
   }
 };
 
+const handleDeleteNotification = async (notificationId) => {
+  if (!token || !notificationId) return;
+
+  // Optional: Add a confirmation dialog
+  const confirmDelete = window.confirm("Möchten Sie diese Benachrichtigung wirklich löschen?");
+  if (!confirmDelete) {
+    return;
+  }
+
+  try {
+    await axios.delete(`${API_URL}/notifications/${notificationId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setUserNotifications(prev => prev.filter(n => n.id !== notificationId));
+    // Optionally, show a success message
+    // alert("Benachrichtigung gelöscht.");
+  } catch (error) {
+    console.error("Fehler beim Löschen der Benachrichtigung:", error);
+    alert(error.response?.data?.msg || "Benachrichtigung konnte nicht gelöscht werden.");
+  }
+};
+
 
   const handleSelecting = (range) => {
     // This function is called when the user is dragging to select a range.
@@ -911,8 +933,24 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                           className={`p-3 border-b border-gray-200 hover:bg-gray-50 ${!notification.isRead ? 'font-semibold bg-blue-50' : ''}`}
                           onClick={() => !notification.isRead && handleMarkNotificationAsRead(notification.id)}
                         >
-                          <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
-                          <p className="text-xs text-gray-500">{format(new Date(notification.createdAt), 'dd.MM.yyyy HH:mm')}</p>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
+                              <p className="text-xs text-gray-500">{format(new Date(notification.createdAt), 'dd.MM.yyyy HH:mm')}</p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent click on li
+                                handleDeleteNotification(notification.id);
+                              }}
+                              className="text-gray-400 hover:text-red-500 ml-2 p-1"
+                              title="Benachrichtigung löschen"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
                           {notification.type === 'overlap_request' && notification.response === 'pending' && (
                             <div className="mt-2 flex space-x-2">
                               <button
@@ -1024,8 +1062,8 @@ const handleMarkNotificationAsRead = async (notificationId) => {
           <div
             className={`card-custom mx-4 min-h-[400px] flex flex-col ${
               user && user.isAdmin && !showConfirmDelete
-                ? 'w-[500px] max-w-[95vw]' // Wider for admin edit
-                : 'w-[600px] max-w-[95vw]' // Wider for user view / delete confirm
+                ? 'w-[700px] max-w-[95vw]' // Wider for admin edit
+                : 'w-[800px] max-w-[95vw]' // Wider for user view / delete confirm
             }`}
           >
             {/* Scrollable Content Area */}

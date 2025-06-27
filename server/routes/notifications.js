@@ -239,5 +239,30 @@ router.post('/:id/mark-read', authMiddleware, async (req, res) => {
     }
 });
 
+// DELETE /api/notifications/:id - Deletes a notification for the authenticated user
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+
+    const notification = await Notification.findOne({
+      where: {
+        id: notificationId,
+        recipientUserId: req.user.id, // Ensure user can only delete their own notifications
+      }
+    });
+
+    if (!notification) {
+      return res.status(404).json({ msg: 'Benachrichtigung nicht gefunden oder nicht autorisiert.' });
+    }
+
+    await notification.destroy();
+    res.json({ msg: 'Benachrichtigung erfolgreich gelöscht.' });
+
+  } catch (error) {
+    console.error("Fehler beim Löschen der Benachrichtigung:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 module.exports = router;
