@@ -1,0 +1,275 @@
+[
+  {
+    "date": "2024-01-01",
+    "localName": "Neujahr",
+    "name": "New Year's Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-03-29",
+    "localName": "Karfreitag",
+    "name": "Good Friday",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-04-01",
+    "localName": "Ostermontag",
+    "name": "Easter Monday",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-05-01",
+    "localName": "Tag der Arbeit",
+    "name": "Labour Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-05-09",
+    "localName": "Christi Himmelfahrt",
+    "name": "Ascension Day",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-05-20",
+    "localName": "Pfingstmontag",
+    "name": "Whit Monday",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-05-30",
+    "localName": "Fronleichnam",
+    "name": "Corpus Christi",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": false,
+    "counties": [
+      "DE-BW",
+      "DE-BY",
+      "DE-HE",
+      "DE-NW",
+      "DE-RP",
+      "DE-SL"
+    ],
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-10-03",
+    "localName": "Tag der Deutschen Einheit",
+    "name": "German Unity Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-12-25",
+    "localName": "Erster Weihnachtstag",
+    "name": "Christmas Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2024-12-26",
+    "localName": "Zweiter Weihnachtstag",
+    "name": "St. Stephen's Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-01-01",
+    "localName": "Neujahr",
+    "name": "New Year's Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-04-18",
+    "localName": "Karfreitag",
+    "name": "Good Friday",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-04-21",
+    "localName": "Ostermontag",
+    "name": "Easter Monday",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-05-01",
+    "localName": "Tag der Arbeit",
+    "name": "Labour Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-05-29",
+    "localName": "Christi Himmelfahrt",
+    "name": "Ascension Day",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-06-09",
+    "localName": "Pfingstmontag",
+    "name": "Whit Monday",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"    ]
+  },
+  {
+    "date": "2025-06-19",
+    "localName": "Fronleichnam",
+    "name": "Corpus Christi",
+    "countryCode": "DE",
+    "fixed": false,
+    "global": false,
+    "counties": [
+      "DE-BW",
+      "DE-BY",
+      "DE-HE",
+      "DE-NW",
+      "DE-RP",
+      "DE-SL"
+    ],
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-10-03",
+    "localName": "Tag der Deutschen Einheit",
+    "name": "German Unity Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-12-25",
+    "localName": "Erster Weihnachtstag",
+    "name": "Christmas Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  },
+  {
+    "date": "2025-12-26",
+    "localName": "Zweiter Weihnachtstag",
+    "name": "St. Stephen's Day",
+    "countryCode": "DE",
+    "fixed": true,
+    "global": true,
+    "counties": null,
+    "launchYear": null,
+    "types": [
+      "Public"
+    ]
+  }
+]

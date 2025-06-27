@@ -1,32 +1,60 @@
 const express = require('express');
-const axios = require('axios');
+const fs = require('fs').promises; // Using promises version of fs
+const path = require('path');
 
 const router = express.Router();
 
+const schoolHolidaysFilePath = path.join(__dirname, '../data/school_holidays_he.json');
+const publicHolidaysFilePath = path.join(__dirname, '../data/public_holidays_he.json');
+
+// Helper function to read and parse JSON file
+async function readHolidaysFile(filePath) {
+  try {
+    const data = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    // Log the error for server-side inspection
+    console.error(`Error reading or parsing holiday file at ${filePath}:`, err);
+    // Throw a more specific error or return null/empty array to handle in route
+    throw new Error(`Could not load holiday data from ${filePath}.`);
+  }
+}
+
 // ---- ROUTE: GET /api/holidays/public/HE ----
-// Ruft die gesetzlichen Feiertage für Hessen für ein bestimmtes Jahr ab.
+// Ruft die gesetzlichen Feiertage für Hessen für ein bestimmtes Jahr aus einer lokalen Datei ab.
 router.get('/public/HE', async (req, res) => {
   try {
-    const year = req.query.year || new Date().getFullYear();
-    const response = await axios.get(`https://date.nager.at/api/v3/PublicHolidays/${year}/DE`);
-    const hessenHolidays = response.data.filter(holiday => holiday.counties === null || holiday.counties.includes('DE-HE'));
-    res.json(hessenHolidays);
+    const year = parseInt(req.query.year || new Date().getFullYear(), 10);
+    const allPublicHolidays = await readHolidaysFile(publicHolidaysFilePath);
+
+    // Filter holidays for the requested year and for Hessen (DE-HE)
+    // The nager.at API includes a 'counties' field. null means nationwide in Germany.
+    // We need to ensure we only pick those that are either nationwide or specific to DE-HE.
+    const hessenHolidaysForYear = allPublicHolidays.filter(holiday => {
+      const holidayYear = new Date(holiday.date).getFullYear();
+      const isHessen = holiday.counties === null || (Array.isArray(holiday.counties) && holiday.counties.includes('DE-HE'));
+      return holidayYear === year && isHessen;
+    });
+
+    res.json(hessenHolidaysForYear);
   } catch (error) {
-    console.error('Fehler beim Abrufen der Feiertage:', error.message);
+    // Error from readHolidaysFile will be caught here
+    console.error('Fehler beim Abrufen der Feiertage aus Datei:', error.message);
     res.status(500).send('Fehler beim Abrufen der Feiertage.');
   }
 });
 
 // ---- ROUTE: GET /api/holidays/school/HE ----
-// Ruft die Schulferien für Hessen ab.
+// Ruft die Schulferien für Hessen aus einer lokalen Datei ab.
 router.get('/school/HE', async (req, res) => {
   try {
-    // KORREKTUR: Wir fragen nicht mehr nach einem spezifischen Jahr, 
-    // sondern rufen alle verfügbaren Ferien ab, um Fehler bei zukünftigen Jahren zu vermeiden.
-    const response = await axios.get(`https://ferien-api.de/api/v1/holidays/HE`);
-    res.json(response.data);
+    const schoolHolidays = await readHolidaysFile(schoolHolidaysFilePath);
+    // If specific filtering by year or other params is needed for school holidays,
+    // it can be added here. For now, returning all data from the file.
+    res.json(schoolHolidays);
   } catch (error) {
-    console.error('Fehler beim Abrufen der Schulferien:', error.message);
+    // Error from readHolidaysFile will be caught here
+    console.error('Fehler beim Abrufen der Schulferien aus Datei:', error.message);
     res.status(500).send('Fehler beim Abrufen der Schulferien.');
   }
 });

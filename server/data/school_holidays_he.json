@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Winterferien",
+    "start": "2024-02-19T00:00:00.000Z",
+    "end": "2024-02-23T00:00:00.000Z",
+    "year": 2024,
+    "slug": "winterferien"
+  },
+  {
+    "name": "Osterferien",
+    "start": "2024-04-02T00:00:00.000Z",
+    "end": "2024-04-13T00:00:00.000Z",
+    "year": 2024,
+    "slug": "osterferien"
+  },
+  {
+    "name": "Sommerferien",
+    "start": "2024-07-15T00:00:00.000Z",
+    "end": "2024-08-23T00:00:00.000Z",
+    "year": 2024,
+    "slug": "sommerferien"
+  },
+  {
+    "name": "Herbstferien",
+    "start": "2024-10-14T00:00:00.000Z",
+    "end": "2024-10-25T00:00:00.000Z",
+    "year": 2024,
+    "slug": "herbstferien"
+  },
+  {
+    "name": "Weihnachtsferien",
+    "start": "2024-12-23T00:00:00.000Z",
+    "end": "2025-01-10T00:00:00.000Z",
+    "year": 2024,
+    "slug": "weihnachtsferien"
+  },
+  {
+    "name": "Osterferien",
+    "start": "2025-04-07T00:00:00.000Z",
+    "end": "2025-04-19T00:00:00.000Z",
+    "year": 2025,
+    "slug": "osterferien"
+  },
+  {
+    "name": "Sommerferien",
+    "start": "2025-07-07T00:00:00.000Z",
+    "end": "2025-08-15T00:00:00.000Z",
+    "year": 2025,
+    "slug": "sommerferien"
+  },
+  {
+    "name": "Herbstferien",
+    "start": "2025-10-06T00:00:00.000Z",
+    "end": "2025-10-18T00:00:00.000Z",
+    "year": 2025,
+    "slug": "herbstferien"
+  },
+  {
+    "name": "Weihnachtsferien",
+    "start": "2025-12-22T00:00:00.000Z",
+    "end": "2026-01-09T00:00:00.000Z",
+    "year": 2025,
+    "slug": "weihnachtsferien"
+  }
+]
