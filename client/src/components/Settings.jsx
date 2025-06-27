@@ -187,16 +187,18 @@ const Settings = ({ user, onUpdateUser }) => {
                   disabled={!user}
                 />
               </div>
-              <div>
-                <label htmlFor="pageTitle" className="block text-sm font-medium text-gray-700 mb-1">Seitentitel</label>
-                <input
-                  type="text"
-                  id="pageTitle"
-                  value={pageTitle}
-                  onChange={(e) => setPageTitle(e.target.value)}
-                  className="input-field" // Use global input-field style
-                />
-              </div>
+              {user && user.isAdmin && (
+                <div>
+                  <label htmlFor="pageTitle" className="block text-sm font-medium text-gray-700 mb-1">Seitentitel (Admin)</label>
+                  <input
+                    type="text"
+                    id="pageTitle"
+                    value={pageTitle}
+                    onChange={(e) => setPageTitle(e.target.value)}
+                    className="input-field" // Use global input-field style
+                  />
+                </div>
+              )}
             </div>
           </div>
 

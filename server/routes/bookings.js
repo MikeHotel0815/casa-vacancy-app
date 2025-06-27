@@ -9,33 +9,159 @@ const { sequelize } = require('../config/database'); // Import sequelize instanc
 
 const router = express.Router();
 
-// Helper function to find conflicts
-async function findConflictingBookings(startDate, endDate, excludeBookingId = null) {
+// Helper function to find conflicts (excluding a specific booking ID if provided)
+async function findConflictingBookings(startDate, endDate, excludeBookingId = null, transaction = null) {
   const whereClause = {
-    status: { [Op.in]: ['booked', 'reserved'] }, // Only conflict with actual confirmed/reserved bookings
+    status: { [Op.in]: ['booked', 'reserved'] },
     [Op.or]: [
-      { startDate: { [Op.lt]: endDate }, endDate: { [Op.gt]: startDate } }, // New interval overlaps existing
+      { startDate: { [Op.lt]: endDate }, endDate: { [Op.gt]: startDate } },
     ],
   };
   if (excludeBookingId) {
     whereClause.id = { [Op.ne]: excludeBookingId };
   }
-  return Booking.findAll({ where: whereClause, order: [['createdAt', 'ASC']] }); // Prioritize older bookings
+  return Booking.findAll({ where: whereClause, order: [['createdAt', 'ASC']], transaction });
 }
 
+// Reusable function to create/process bookings with overlap logic
+async function processAndCreateBookings({
+  requestedStartDate,
+  requestedEndDate,
+  requestedStatus,
+  userId,
+  displayName,
+  originalRequestIdIn, // Use a different name to avoid conflict with uuidv4()
+  transaction,
+  existingBookingToUpdate = null // Pass if this is an update scenario
+}) {
+  let finalUserId = userId;
+  let finalDisplayName = displayName;
+  // If existingBookingToUpdate is provided, its originalRequestId should be preferred
+  const originalRequestId = existingBookingToUpdate?.originalRequestId || originalRequestIdIn || uuidv4();
+
+
+  // ---- START: Same-User Booking Merging Logic ----
+  let effectiveReqStartDate = new Date(requestedStartDate);
+  let effectiveReqEndDate = new Date(requestedEndDate);
+
+  const sameUserBookingsQuery = {
+    userId: finalUserId,
+    status: { [Op.in]: ['booked', 'reserved'] },
+    [Op.or]: [
+      { startDate: { [Op.lte]: effectiveReqEndDate }, endDate: { [Op.gte]: effectiveReqStartDate } },
+    ],
+  };
+  // If updating, exclude the booking being updated from the initial merge check against itself
+  if (existingBookingToUpdate) {
+    sameUserBookingsQuery.id = { [Op.ne]: existingBookingToUpdate.id };
+  }
+
+  const sameUserBookings = await Booking.findAll({ where: sameUserBookingsQuery, transaction });
+
+  if (sameUserBookings.length > 0) {
+    const bookingsToDelete = [];
+    for (const booking of sameUserBookings) {
+      effectiveReqStartDate = new Date(Math.min(effectiveReqStartDate.getTime(), new Date(booking.startDate).getTime()));
+      effectiveReqEndDate = new Date(Math.max(effectiveReqEndDate.getTime(), new Date(booking.endDate).getTime()));
+      bookingsToDelete.push(booking.id);
+    }
+    if (bookingsToDelete.length > 0) {
+      await Booking.destroy({ where: { id: { [Op.in]: bookingsToDelete }, userId: finalUserId }, transaction });
+    }
+  }
+  // ---- END: Same-User Booking Merging Logic ----
+
+  // Now, find conflicts with OTHER users using the (potentially merged) effective dates
+  // If updating, exclude the original booking ID from conflict check, as it's being replaced.
+  const conflicts = await findConflictingBookings(
+    effectiveReqStartDate.toISOString().split('T')[0],
+    effectiveReqEndDate.toISOString().split('T')[0],
+    existingBookingToUpdate ? existingBookingToUpdate.id : null, // Exclude self if updating
+    transaction
+  );
+
+  const createdBookingSegments = [];
+
+  if (conflicts.filter(b => b.userId !== finalUserId).length === 0) {
+    const newBooking = await Booking.create({
+      startDate: effectiveReqStartDate.toISOString().split('T')[0],
+      endDate: effectiveReqEndDate.toISOString().split('T')[0],
+      userId: finalUserId,
+      displayName: finalDisplayName,
+      status: requestedStatus,
+      originalRequestId,
+      isSplit: false,
+    }, { transaction });
+    createdBookingSegments.push(newBooking);
+  } else {
+    let currentStartDate = new Date(effectiveReqStartDate);
+    const requestEndDate = new Date(effectiveReqEndDate);
+    const otherUserConflicts = conflicts
+      .filter(b => b.userId !== finalUserId)
+      .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+    for (const conflict of otherUserConflicts) {
+      const conflictStart = new Date(conflict.startDate);
+      const conflictEnd = new Date(conflict.endDate);
+
+      if (currentStartDate < conflictStart) {
+        const segmentEndDate = new Date(Math.min(requestEndDate.getTime(), conflictStart.getTime()));
+        if (currentStartDate < segmentEndDate) {
+          const segment = await Booking.create({
+            startDate: currentStartDate.toISOString().split('T')[0],
+            endDate: segmentEndDate.toISOString().split('T')[0],
+            userId: finalUserId, displayName: finalDisplayName, status: requestedStatus, originalRequestId, isSplit: true,
+          }, { transaction });
+          createdBookingSegments.push(segment);
+        }
+      }
+
+      const overlapStart = new Date(Math.max(currentStartDate.getTime(), conflictStart.getTime()));
+      const overlapEnd = new Date(Math.min(requestEndDate.getTime(), conflictEnd.getTime()));
+
+      if (overlapStart < overlapEnd) {
+        if (conflict.userId !== finalUserId) { // Should always be true due to filter
+          const angefragtSegment = await Booking.create({
+            startDate: overlapStart.toISOString().split('T')[0],
+            endDate: overlapEnd.toISOString().split('T')[0],
+            userId: finalUserId, displayName: finalDisplayName, status: 'angefragt', originalRequestId, isSplit: true, originalBookingId: conflict.id,
+          }, { transaction });
+          createdBookingSegments.push(angefragtSegment);
+          await Notification.create({
+            recipientUserId: conflict.userId, type: 'overlap_request',
+            message: `Eine neue Buchungsanfrage von ${finalDisplayName} (${overlapStart.toISOString().split('T')[0]} bis ${overlapEnd.toISOString().split('T')[0]}) überschneidet sich mit Ihrer Buchung (${conflict.startDate} bis ${conflict.endDate}).`,
+            relatedBookingId: angefragtSegment.id, overlapStartTime: overlapStart, overlapEndTime: overlapEnd,
+          }, { transaction });
+        }
+      }
+      currentStartDate = new Date(Math.max(currentStartDate.getTime(), overlapEnd.getTime()));
+      if (currentStartDate >= requestEndDate) break;
+    }
+
+    if (currentStartDate < requestEndDate) {
+      const segment = await Booking.create({
+        startDate: currentStartDate.toISOString().split('T')[0],
+        endDate: requestEndDate.toISOString().split('T')[0],
+        userId: finalUserId, displayName: finalDisplayName, status: requestedStatus, originalRequestId, isSplit: true,
+      }, { transaction });
+      createdBookingSegments.push(segment);
+    }
+  }
+  return createdBookingSegments.filter(s => s);
+}
 
 // ---- ROUTE: POST /api/bookings ----
 // Erstellt eine neue Buchung oder Buchungssegmente bei Überschneidungen.
 router.post('/', authMiddleware, async (req, res) => {
-  const transaction = await sequelize.transaction(); // Start a transaction
+  const transaction = await sequelize.transaction();
   try {
-    const { startDate: reqStartDate, endDate: reqEndDate, status: reqStatus, userId: targetUserId, displayName: targetDisplayName } = req.body;
+    const { startDate: reqStartDate, endDate: reqEndDate, status: reqStatusBody, userId: targetUserId, displayName: targetDisplayNameBody } = req.body;
     const loggedInUser = req.user;
-
-    const originalRequestId = uuidv4(); // Generate a unique ID for this booking request
+    const requestOriginalRequestId = uuidv4(); // Generate a unique ID for this specific user request operation
 
     let finalUserId = loggedInUser.id;
     let finalDisplayName = loggedInUser.displayName;
+    let requestedStatus = reqStatusBody || 'booked';
 
     // 1. Validation
     if (!reqStartDate || !reqEndDate) {
@@ -46,8 +172,7 @@ router.post('/', authMiddleware, async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({ msg: 'Das Enddatum muss nach dem Startdatum liegen.' });
     }
-    const requestedStatus = reqStatus || 'booked';
-    if (!['booked', 'reserved'].includes(requestedStatus)) { // User can only request 'booked' or 'reserved'
+    if (!['booked', 'reserved'].includes(requestedStatus)) {
       await transaction.rollback();
       return res.status(400).json({ msg: 'Ungültiger Statuswert. Nur "booked" oder "reserved" anfragen.' });
     }
@@ -59,113 +184,45 @@ router.post('/', authMiddleware, async (req, res) => {
         return res.status(404).json({ msg: 'Der angegebene Benutzer für die Buchung wurde nicht gefunden.' });
       }
       finalUserId = userToBookFor.id;
-      finalDisplayName = userToBookFor.displayName;
-    } else if (loggedInUser.isAdmin && !targetUserId && targetDisplayName) {
-      await transaction.rollback();
-      return res.status(400).json({ msg: 'Admins müssen eine targetUserId angeben, um für andere zu buchen.' });
+      finalDisplayName = userToBookFor.displayName; // Use actual displayName of target user
+    } else if (loggedInUser.isAdmin && !targetUserId && targetDisplayNameBody) { // Admin booking for external user by name
+        // This case should be handled carefully or disallowed if external users aren't modeled.
+        // Assuming for now targetDisplayNameBody is for an existing user if targetUserId is not given.
+        // Or, if it's a truly external name, ensure your User model/logic supports it.
+        // For simplicity, this example assumes if targetUserId is missing, it's for the admin themselves or invalid.
+        // Let's stick to: admin needs targetUserId to book for others.
+        await transaction.rollback();
+        return res.status(400).json({ msg: 'Admins müssen eine targetUserId angeben, um für andere zu buchen.' });
     } else if (!loggedInUser.displayName) {
         await transaction.rollback();
         return res.status(400).json({ msg: 'Anzeigename nicht im Token gefunden.' });
     }
-
-    const conflictingPrimaryBookings = await findConflictingBookings(reqStartDate, reqEndDate);
-
-    const createdBookingSegments = [];
-
-    if (conflictingPrimaryBookings.length === 0) {
-      // No conflicts, create the booking as is
-      const newBooking = await Booking.create({
-        startDate: reqStartDate,
-        endDate: reqEndDate,
-        userId: finalUserId,
-        displayName: finalDisplayName,
-        status: requestedStatus,
-        originalRequestId,
-        isSplit: false,
-      }, { transaction });
-      createdBookingSegments.push(newBooking);
-    } else {
-      // Conflicts exist, handle splitting and 'angefragt' status
-      let currentStartDate = new Date(reqStartDate);
-      const requestEndDate = new Date(reqEndDate);
-
-      // Sort conflicts by their start date to process them in order
-      conflictingPrimaryBookings.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-
-      for (const conflict of conflictingPrimaryBookings) {
-        const conflictStart = new Date(conflict.startDate);
-        const conflictEnd = new Date(conflict.endDate);
-
-        // 1. Non-overlapping part before the current conflict
-        if (currentStartDate < conflictStart) {
-          const segmentEndDate = new Date(Math.min(requestEndDate.getTime(), conflictStart.getTime()));
-          if (currentStartDate < segmentEndDate) {
-             const segment = await Booking.create({
-                startDate: currentStartDate.toISOString().split('T')[0],
-                endDate: segmentEndDate.toISOString().split('T')[0],
-                userId: finalUserId,
-                displayName: finalDisplayName,
-                status: requestedStatus, // 'booked' or 'reserved'
-                originalRequestId,
-                isSplit: true,
-             }, { transaction });
-             createdBookingSegments.push(segment);
-          }
-        }
-
-        // 2. Overlapping part (becomes 'angefragt')
-        const overlapStart = new Date(Math.max(currentStartDate.getTime(), conflictStart.getTime()));
-        const overlapEnd = new Date(Math.min(requestEndDate.getTime(), conflictEnd.getTime()));
-
-        if (overlapStart < overlapEnd) {
-          const angefragtSegment = await Booking.create({
-            startDate: overlapStart.toISOString().split('T')[0],
-            endDate: overlapEnd.toISOString().split('T')[0],
-            userId: finalUserId,
-            displayName: finalDisplayName,
-            status: 'angefragt',
-            originalRequestId,
-            isSplit: true,
-            originalBookingId: conflict.id, // Link to the primary booking it overlaps with
-          }, { transaction });
-          createdBookingSegments.push(angefragtSegment);
-
-          // Create notification for the owner of the primary booking
-          await Notification.create({
-            recipientUserId: conflict.userId,
-            type: 'overlap_request',
-            message: `Eine neue Buchungsanfrage von ${finalDisplayName} (${overlapStart.toISOString().split('T')[0]} bis ${overlapEnd.toISOString().split('T')[0]}) überschneidet sich mit Ihrer Buchung (${conflict.startDate} bis ${conflict.endDate}).`,
-            relatedBookingId: angefragtSegment.id,
-            overlapStartTime: overlapStart,
-            overlapEndTime: overlapEnd,
-          }, { transaction });
-        }
-        currentStartDate = new Date(Math.max(currentStartDate.getTime(), overlapEnd.getTime()));
-        if (currentStartDate >= requestEndDate) break; // Processed the whole request range
-      }
-
-      // 3. Non-overlapping part after all conflicts
-      if (currentStartDate < requestEndDate) {
-        const segment = await Booking.create({
-          startDate: currentStartDate.toISOString().split('T')[0],
-          endDate: requestEndDate.toISOString().split('T')[0],
-          userId: finalUserId,
-          displayName: finalDisplayName,
-          status: requestedStatus,
-          originalRequestId,
-          isSplit: true,
-        }, { transaction });
-        createdBookingSegments.push(segment);
-      }
+     // If admin is booking for self, or non-admin booking for self
+    if(targetUserId && targetUserId === loggedInUser.id && targetDisplayNameBody) {
+        finalDisplayName = targetDisplayNameBody; // Allow self-update of display name if provided
+    } else if (targetUserId && targetUserId === loggedInUser.id && !targetDisplayNameBody){
+        finalDisplayName = loggedInUser.displayName;
+    } else if (!targetUserId) { // Normal user booking for self
+        finalDisplayName = loggedInUser.displayName;
     }
+
+
+    const createdBookingSegments = await processAndCreateBookings({
+      requestedStartDate: reqStartDate,
+      requestedEndDate: reqEndDate,
+      requestedStatus,
+      userId: finalUserId,
+      displayName: finalDisplayName,
+      originalRequestIdIn: requestOriginalRequestId, // Pass the new UUID for this operation
+      transaction
+    });
 
     await transaction.commit();
     res.status(201).json(createdBookingSegments);
 
   } catch (error) {
-    await transaction.rollback(); // Rollback transaction on error
+    await transaction.rollback();
     console.error("Error creating booking:", error);
-    // Check for specific Sequelize validation errors if needed
     if (error.name === 'SequelizeValidationError') {
         return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors.map(e => e.message) });
     }
@@ -173,8 +230,6 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// ... (rest of the routes: GET, DELETE, PUT - PUT will need similar overlap logic if dates change)
-// Helper function to find conflicts (already defined above, ensure it's in scope or passed)
 
 // ---- ROUTE: DELETE /api/bookings/:id ----
 // Löscht eine Buchung.
@@ -220,120 +275,164 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 
 // ---- ROUTE: PUT /api/bookings/:id ----
-// Aktualisiert eine Buchung, z.B. um den Status zu ändern.
-// IMPORTANT: This route currently does NOT implement the new overlapping logic.
-// Updating a booking's date might cause new overlaps or change existing ones.
-// This needs a similar complex logic as the POST route.
-// For this iteration, date changes that cause new conflicts will likely be rejected by old logic or fail.
+// Aktualisiert eine Buchung. Wendet die volle Overlap-Logik an, wenn Daten oder Status geändert werden.
 router.put('/:id', authMiddleware, async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const bookingId = req.params.id;
         const loggedInUser = req.user;
-        const { startDate, endDate, status, userId: targetUserIdToSet, displayName: targetDisplayNameToSet } = req.body;
+        const {
+            startDate: newStartDateStr,
+            endDate: newEndDateStr,
+            status: newStatusBody,
+            userId: newTargetUserId,
+            displayName: newTargetDisplayName
+        } = req.body;
 
-        const booking = await Booking.findByPk(bookingId, { transaction });
+        const existingBooking = await Booking.findByPk(bookingId, { transaction });
 
-        if (!booking) {
+        if (!existingBooking) {
             await transaction.rollback();
             return res.status(404).json({ msg: 'Buchung nicht gefunden.' });
         }
 
-        // Users cannot directly change a booking to 'angefragt' or from 'angefragt' to 'booked' via PUT.
-        // 'angefragt' is a system-set status. Confirmation of an 'angefragt' booking happens via notification response.
-        if (status && (status === 'angefragt' || booking.status === 'angefragt' && status !== 'cancelled')) {
-            await transaction.rollback();
-            return res.status(400).json({ msg: 'Status "angefragt" kann nicht direkt gesetzt oder geändert werden, außer zu "cancelled".' });
-        }
-
-
-        if (!loggedInUser.isAdmin && booking.userId !== loggedInUser.id) {
+        // Berechtigungsprüfung
+        if (!loggedInUser.isAdmin && existingBooking.userId !== loggedInUser.id) {
             await transaction.rollback();
             return res.status(403).json({ msg: 'Sie sind nicht berechtigt, diese Buchung zu ändern.' });
         }
 
-        if (status && !['booked', 'reserved', 'cancelled'].includes(status)) { // Added 'cancelled'
+        // Status Validierungen
+        if (newStatusBody && (newStatusBody === 'angefragt' || (existingBooking.status === 'angefragt' && newStatusBody !== 'cancelled'))) {
             await transaction.rollback();
-            return res.status(400).json({ msg: 'Ungültiger Statuswert.' });
+            return res.status(400).json({ msg: 'Status "angefragt" kann nicht direkt über PUT gesetzt oder geändert werden, außer zu "cancelled".' });
         }
-        if ((startDate && !endDate) || (!startDate && endDate)) {
+        if (newStatusBody && !['booked', 'reserved', 'cancelled'].includes(newStatusBody)) {
+            await transaction.rollback();
+            return res.status(400).json({ msg: 'Ungültiger Statuswert für Aktualisierung.' });
+        }
+
+        // Datums Validierungen (nur wenn Daten geändert werden)
+        if ((newStartDateStr && !newEndDateStr) || (!newStartDateStr && newEndDateStr)) {
             await transaction.rollback();
             return res.status(400).json({ msg: 'Bei Datumsänderung müssen Start- und Enddatum angegeben werden.' });
         }
-         if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+        if (newStartDateStr && newEndDateStr && new Date(newStartDateStr) >= new Date(newEndDateStr)) {
             await transaction.rollback();
             return res.status(400).json({ msg: 'Das Enddatum muss nach dem Startdatum liegen.' });
         }
 
+        const finalNewStartDate = newStartDateStr || existingBooking.startDate;
+        const finalNewEndDate = newEndDateStr || existingBooking.endDate;
+        const finalNewStatus = newStatusBody || existingBooking.status;
 
-        let finalUserIdToSet = booking.userId;
-        let finalDisplayNameToSet = booking.displayName;
+        let finalUserIdForUpdate = existingBooking.userId;
+        let finalDisplayNameForUpdate = existingBooking.displayName;
 
-        if (loggedInUser.isAdmin && targetUserIdToSet) {
-            const userToSet = await User.findByPk(targetUserIdToSet, { transaction });
+        // Admin changing user for the booking
+        if (loggedInUser.isAdmin && newTargetUserId && newTargetUserId !== existingBooking.userId) {
+            const userToSet = await User.findByPk(newTargetUserId, { transaction });
             if (!userToSet) {
                 await transaction.rollback();
-                return res.status(404).json({ msg: 'Der angegebene Benutzer für die Aktualisierung wurde nicht gefunden.' });
+                return res.status(404).json({ msg: 'Der angegebene neue Benutzer für die Buchung wurde nicht gefunden.' });
             }
-            finalUserIdToSet = userToSet.id;
-            finalDisplayNameToSet = userToSet.displayName;
-        } else if (loggedInUser.isAdmin && targetDisplayNameToSet && !targetUserIdToSet) {
-             if (finalUserIdToSet === booking.userId) {
-                 finalDisplayNameToSet = targetDisplayNameToSet;
-            } else {
-                 await transaction.rollback();
-                 return res.status(400).json({ msg: 'Um den Benutzer zu ändern, muss eine targetUserId angegeben werden.' });
-            }
+            finalUserIdForUpdate = userToSet.id;
+            finalDisplayNameForUpdate = newTargetDisplayName || userToSet.displayName; // Use provided name or new user's default
+        } else if (loggedInUser.isAdmin && newTargetDisplayName && (!newTargetUserId || newTargetUserId === existingBooking.userId)) {
+            // Admin changing only display name for existing user of booking
+            finalDisplayNameForUpdate = newTargetDisplayName;
+        } else if (!loggedInUser.isAdmin && newTargetDisplayName) {
+            // Non-admin trying to update their own display name for the booking
+             if (existingBooking.userId === loggedInUser.id) {
+                finalDisplayNameForUpdate = newTargetDisplayName;
+             }
         }
 
-        const newStartDate = startDate || booking.startDate;
-        const newEndDate = endDate || booking.endDate;
-        const newStatus = status || booking.status;
 
-        // *** Overlap check for PUT - Simplified for now ***
-        // A full implementation would require deleting current booking and re-creating segments,
-        // which is very complex for PUT.
-        // Current simplified check: if dates change, or status changes to 'booked' from 'reserved',
-        // check for conflicts. This does NOT implement the splitting logic of POST.
-        // It will reject if ANY conflict is found.
-        let performOverlapCheck = false;
-        if ( (startDate || endDate) && (newStartDate !== booking.startDate || newEndDate !== booking.endDate) ) {
-            performOverlapCheck = true;
-        } else if (newStatus === 'booked' && booking.status === 'reserved') {
-            performOverlapCheck = true;
-        }
+        // Determine if full re-processing is needed
+        const datesChanged = newStartDateStr || newEndDateStr;
+        const statusChangedToBookedOrReserved = newStatusBody && ['booked', 'reserved'].includes(newStatusBody) && newStatusBody !== existingBooking.status;
+        const userChanged = newTargetUserId && newTargetUserId !== existingBooking.userId;
 
-        if (performOverlapCheck) {
-            // This is the OLD conflict check logic. It doesn't split or create 'angefragt'.
-            // It just prevents the update if a conflict is found.
-            const conflictCheckFilter = {
-                id: { [Op.ne]: bookingId },
-                status: newStatus === 'booked' ? { [Op.in]: ['booked', 'reserved'] } : 'booked',
-                 [Op.or]: [
-                    { startDate: { [Op.lt]: newEndDate }, endDate: { [Op.gt]: newStartDate } },
-                ]
-            };
-
-            const conflictingBooking = await Booking.findOne({ where: conflictCheckFilter, transaction });
-
-            if (conflictingBooking) {
-                await transaction.rollback();
-                let message = 'Die Aktualisierung überschneidet sich mit einer bestehenden ';
-                message += conflictingBooking.status === 'reserved' ? 'Reservierung.' : 'Buchung.';
-                return res.status(400).json({ msg: message });
+        if (datesChanged || statusChangedToBookedOrReserved || userChanged || (newStatusBody === 'cancelled' && existingBooking.status !== 'cancelled') ) {
+             if (newStatusBody === 'cancelled') { // Handle cancellation separately and simply
+                existingBooking.status = 'cancelled';
+                existingBooking.displayName = finalDisplayNameForUpdate; // Allow display name update during cancellation
+                await existingBooking.save({ transaction });
+                 // If it was an 'angefragt' booking, related notifications might need cleanup or specific handling.
+                if (existingBooking.wasAngefragt) { // Need a way to know if it was 'angefragt'
+                     await Notification.destroy({ where: { relatedBookingId: existingBooking.id, type: 'overlap_request' }, transaction });
+                }
+                await transaction.commit();
+                return res.json(existingBooking);
             }
+
+            // For other significant changes, delete original and re-create
+            const originalBookingIdForDelete = existingBooking.id;
+            const originalRequestIdFromExisting = existingBooking.originalRequestId || uuidv4(); // Preserve or create new if somehow missing
+
+            await Booking.destroy({ where: { id: originalBookingIdForDelete }, transaction });
+
+            // If there were 'angefragt' bookings pointing to this one, they need to be handled.
+            // Their originalBookingId will become NULL due to model constraints (onDelete: 'SET NULL').
+            // This might mean they auto-confirm if the slot is free, or need re-evaluation.
+            // For now, we'll let the SET NULL handle DB integrity. Re-evaluation is complex.
+            // Also, destroy any 'overlap_request' notifications related to the booking being updated if it was primary for them.
+            // This is tricky because the 'angefragt' booking holds the originalBookingId.
+            // We should cancel 'angefragt' requests that were targeting the booking we just deleted if its dates change.
+
+            // Step 1: Find 'angefragt' bookings that were pointing to the booking being deleted.
+            const angefragtBookingsToCancel = await Booking.findAll({
+                where: {
+                    originalBookingId: originalBookingIdForDelete,
+                    status: 'angefragt'
+                },
+                transaction
+            });
+
+            if (angefragtBookingsToCancel.length > 0) {
+                const angefragtBookingIds = angefragtBookingsToCancel.map(b => b.id);
+
+                // Step 2: Delete 'overlap_request' notifications related to these 'angefragt' bookings.
+                await Notification.destroy({
+                    where: {
+                        relatedBookingId: { [Op.in]: angefragtBookingIds },
+                        type: 'overlap_request'
+                    },
+                    transaction
+                });
+
+                // Step 3: Update these 'angefragt' bookings to 'cancelled'.
+                await Booking.update(
+                    { status: 'cancelled', originalBookingId: null },
+                    { where: { id: { [Op.in]: angefragtBookingIds } }, transaction }
+                );
+            }
+
+
+            const newBookingSegments = await processAndCreateBookings({
+                requestedStartDate: finalNewStartDate,
+                requestedEndDate: finalNewEndDate,
+                requestedStatus: finalNewStatus,
+                userId: finalUserIdForUpdate,
+                displayName: finalDisplayNameForUpdate,
+                originalRequestIdIn: originalRequestIdFromExisting, // Use existing OR create new
+                transaction,
+                existingBookingToUpdate: null // Treat as new creation after delete
+            });
+
+            await transaction.commit();
+            return res.status(200).json(newBookingSegments); // Return new segment(s)
+
+        } else {
+            // Only minor changes (e.g., admin changing display name for non-admin, no date/status change)
+            existingBooking.userId = finalUserIdForUpdate;
+            existingBooking.displayName = finalDisplayNameForUpdate;
+            // No change to startDate, endDate, status if not part of the major reprocessing block
+            await existingBooking.save({ transaction });
+            await transaction.commit();
+            return res.json(existingBooking);
         }
-
-        booking.startDate = newStartDate;
-        booking.endDate = newEndDate;
-        booking.status = newStatus;
-        booking.userId = finalUserIdToSet;
-        booking.displayName = finalDisplayNameToSet;
-        // originalRequestId and isSplit should not change on simple updates unless it's a re-creation.
-
-        await booking.save({ transaction });
-        await transaction.commit();
-        res.json(booking);
 
     } catch (error) {
         await transaction.rollback();
@@ -345,7 +444,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// GET /api/bookings (no changes needed for this, but ensure it returns new fields)
+// GET /api/bookings
 router.get('/', async (req, res) => {
   try {
     // Include User model to get more details if needed, or just use displayName from Booking
