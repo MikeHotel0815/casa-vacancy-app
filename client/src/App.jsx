@@ -74,6 +74,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import BookingConfirmationModal from './components/BookingConfirmationModal'; // Import new modal
 import Settings from './components/Settings'; // Import Settings component
+import NotificationsModal from './components/NotificationsModal'; // Import NotificationsModal
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -136,9 +137,9 @@ function App() {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [userNotifications, setUserNotifications] = useState([]);
   const [relevantNotificationForModal, setRelevantNotificationForModal] = useState(null);
-  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false); // New state for modal
   const notificationsButtonRef = useRef(null); // Ref for the notifications button
-  const notificationsDropdownRef = useRef(null); // Ref for the notifications dropdown
+  // const notificationsDropdownRef = useRef(null); // No longer needed for dropdown
 
 
   // States for the new booking/reservation modal
@@ -360,19 +361,19 @@ function App() {
         }
       }
 
-      // Handle clicks outside notifications dropdown to close it
-      if (showNotificationsDropdown &&
-          notificationsButtonRef.current && !notificationsButtonRef.current.contains(event.target) &&
-          notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(event.target)) {
-        setShowNotificationsDropdown(false);
-      }
+      // Handle clicks outside notifications dropdown to close it - This logic will be handled by the Modal component itself or removed
+      // if (showNotificationsDropdown &&
+      //     notificationsButtonRef.current && !notificationsButtonRef.current.contains(event.target) &&
+      //     notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(event.target)) {
+      //   setShowNotificationsDropdown(false);
+      // }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [calendarRef, showBookingModal, selectionStart, selectionEnd, showNotificationsDropdown]);
+  }, [calendarRef, showBookingModal, selectionStart, selectionEnd]); // Removed showNotificationsDropdown from deps
 
   // --- HANDLER FUNCTIONS ---
   const handleLoginSuccess = (data) => {
@@ -598,6 +599,7 @@ const handleMarkNotificationAsRead = async (notificationId) => {
   }
 };
 
+// Function to handle deleting a notification
 const handleDeleteNotification = async (notificationId) => {
   if (!token || !notificationId) {
     alert("Löschen nicht möglich. Fehlende Informationen.");
@@ -902,10 +904,10 @@ const handleDeleteNotification = async (notificationId) => {
               Angemeldet als: {user.displayName}
             </span>
 
-            {/* Notifications Bell Icon & Dropdown */}
+            {/* Notifications Bell Icon & Modal Trigger */}
             <div className="relative" ref={notificationsButtonRef}>
               <button
-                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                onClick={() => setShowNotificationsModal(true)} // Open modal
                 className="btn p-2 relative" // Basic button styling, adjust as needed
                 aria-label="Benachrichtigungen"
               >
@@ -918,54 +920,7 @@ const handleDeleteNotification = async (notificationId) => {
                   </span>
                 )}
               </button>
-              {showNotificationsDropdown && (
-                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-[640px] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
-                  {userNotifications.length === 0 ? (
-                    <p className="p-4 text-sm text-gray-500">Keine neuen Benachrichtigungen.</p>
-                  ) : (
-                    <ul>
-                      {userNotifications.map(notification => (
-                        <li
-                          key={notification.id}
-                          className={`p-3 border-b border-gray-200 hover:bg-gray-50 ${!notification.isRead ? 'font-semibold bg-blue-50' : ''}`}
-                          // onClick for marking as read is kept, but delete button will stop propagation
-                        >
-                          <div className="flex justify-between items-start">
-                            <div
-                              className="flex-grow cursor-pointer"
-                              onClick={() => !notification.isRead && handleMarkNotificationAsRead(notification.id)}
-                            >
-                              <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
-                              <p className="text-xs text-gray-500">{format(new Date(notification.createdAt), 'dd.MM.yyyy HH:mm')}</p>
-                            </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteNotification(notification.id); }}
-                              className="ml-2 text-red-500 hover:text-red-700 font-bold text-lg leading-none p-1"
-                              aria-label="Benachrichtigung löschen"
-                            >
-                              &times;
-                            </button>
-                          </div>
-                          {notification.type === 'overlap_request' && notification.response === 'pending' && (
-                            <div className="mt-2 flex space-x-2">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleRespondToOverlap(notification.id, 'approved'); setShowNotificationsDropdown(false);}}
-                                className="btn bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1">
-                                Zustimmen
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleRespondToOverlap(notification.id, 'rejected'); setShowNotificationsDropdown(false);}}
-                                className="btn bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1">
-                                Ablehnen
-                              </button>
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+              {/* The old dropdown JSX is removed. The modal will be rendered elsewhere. */}
             </div>
 
             <button
@@ -1174,6 +1129,20 @@ const handleDeleteNotification = async (notificationId) => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {showNotificationsModal && (
+        <NotificationsModal
+          isOpen={showNotificationsModal}
+          onClose={() => setShowNotificationsModal(false)}
+          notifications={userNotifications}
+          onDeleteNotification={handleDeleteNotification} // Wird im nächsten Schritt erstellt/sichergestellt
+          onMarkAsRead={handleMarkNotificationAsRead}
+          onRespondToOverlap={(notificationId, action) => {
+            handleRespondToOverlap(notificationId, action);
+            setShowNotificationsModal(false); // Modal nach Aktion schließen
+          }}
+        />
       )}
     </>
   );
