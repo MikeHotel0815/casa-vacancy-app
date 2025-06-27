@@ -284,6 +284,7 @@ function App() {
           return new Date(a.start) - new Date(b.start);
         });
 
+        console.log('[CLIENT DEBUG] Fetched and formatted events after action:', allEvents); // Temporäres Log
         setEvents(allEvents);
       } catch (error) {
         console.error("Fehler beim Laden der Kalenderdaten:", error);
@@ -320,6 +321,7 @@ function App() {
           const response = await axios.get(`${API_URL}/notifications`, {
             headers: { Authorization: `Bearer ${token}` },
           });
+          console.log('[CLIENT DEBUG] Fetched notifications after action:', response.data); // Temporäres Log
           setUserNotifications(response.data);
         } catch (error) {
           console.error('Fehler beim Laden der Benachrichtigungen:', error);
