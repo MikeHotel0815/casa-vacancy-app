@@ -13,9 +13,10 @@ const router = express.Router();
 async function findConflictingBookings(startDate, endDate, excludeBookingId = null, transaction = null) {
   const whereClause = {
     status: { [Op.in]: ['booked', 'reserved'] },
-    [Op.or]: [
-      { startDate: { [Op.lt]: endDate }, endDate: { [Op.gt]: startDate } },
-    ],
+    // Standard interval overlap condition:
+    // existing.startDate <= new.endDate AND existing.endDate >= new.startDate
+    startDate: { [Op.lte]: endDate }, // endDate of the request
+    endDate: { [Op.gte]: startDate }  // startDate of the request
   };
   if (excludeBookingId) {
     whereClause.id = { [Op.ne]: excludeBookingId };
@@ -119,7 +120,8 @@ async function processAndCreateBookings({
       const overlapStart = new Date(Math.max(currentStartDate.getTime(), conflictStart.getTime()));
       const overlapEnd = new Date(Math.min(requestEndDate.getTime(), conflictEnd.getTime()));
 
-      if (overlapStart < overlapEnd) {
+      // Check if the calculated overlap period is valid (start is less than or equal to end)
+      if (overlapStart.getTime() <= overlapEnd.getTime()) {
         if (conflict.userId !== finalUserId) { // Should always be true due to filter
           const angefragtSegment = await Booking.create({
             startDate: overlapStart.toISOString().split('T')[0],
@@ -132,7 +134,6 @@ async function processAndCreateBookings({
             message: `Eine neue Buchungsanfrage von ${finalDisplayName} (${overlapStart.toISOString().split('T')[0]} bis ${overlapEnd.toISOString().split('T')[0]}) überschneidet sich mit Ihrer Buchung (${conflict.startDate} bis ${conflict.endDate}).`,
             relatedBookingId: angefragtSegment.id, overlapStartTime: overlapStart, overlapEndTime: overlapEnd,
           }, { transaction });
-          console.log(`[SERVER LOG] Overlap notification created for recipientUserId: ${conflict.userId}, relatedBookingId (angefragtSegmentId): ${angefragtSegment.id}, originalConflictId: ${conflict.id}`);
         }
       }
       currentStartDate = new Date(Math.max(currentStartDate.getTime(), overlapEnd.getTime()));
