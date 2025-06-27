@@ -132,8 +132,14 @@ function App() {
   const [selectionEnd, setSelectionEnd] = useState(null); // Added to store the end of the selection range
   const [date, setDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState(Views.MONTH);
-  const [selectedBooking, setSelectedBooking] = useState(null); 
+  const [selectedBooking, setSelectedBooking] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [userNotifications, setUserNotifications] = useState([]);
+  const [relevantNotificationForModal, setRelevantNotificationForModal] = useState(null);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const notificationsButtonRef = useRef(null); // Ref for the notifications button
+  const notificationsDropdownRef = useRef(null); // Ref for the notifications dropdown
+
 
   // States for the new booking/reservation modal
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -215,13 +221,28 @@ function App() {
           schoolHolidaysPromise // This will now resolve with { data: [] } if the original fetch failed
         ]);
 
-        const formattedBookings = bookingsRes.data.map(booking => ({
-          id: booking.id,
-          userId: booking.userId,
-          title: `${booking.status === 'reserved' ? 'Reserviert' : 'Belegt'}: ${booking.displayName}`,
-          displayName: booking.displayName, // Store displayName separately for modal use
-          start: new Date(booking.startDate),
-          end: new Date(booking.endDate),
+        const formattedBookings = bookingsRes.data.map(booking => {
+          let titlePrefix = 'Belegt';
+          if (booking.status === 'reserved') titlePrefix = 'Reserviert';
+          else if (booking.status === 'angefragt') titlePrefix = 'Angefragt';
+          else if (booking.status === 'cancelled') titlePrefix = 'Storniert';
+
+          return {
+            id: booking.id,
+            userId: booking.userId,
+            title: `${titlePrefix}: ${booking.displayName}`,
+            displayName: booking.displayName, // Store displayName separately for modal use
+            start: new Date(booking.startDate),
+            end: new Date(booking.endDate),
+            type: 'booking',
+            status: booking.status,
+          };
+        });
+        const formattedPublicHolidays = publicHolidaysRes.data.map(holiday => ({
+          title: holiday.localName,
+          start: new Date(holiday.date),
+          end: new Date(holiday.date),
+          allDay: true,
           type: 'booking',
           status: booking.status,
         }));
@@ -270,7 +291,7 @@ function App() {
     };
 
     fetchAllEvents();
-  }, [date, user]);
+  }, [date, user, token]); // Added token dependency for fetchAllEvents if it starts using it for notifications indirectly
 
   // Fetch all users if the current user is an admin
   useEffect(() => {
@@ -283,31 +304,67 @@ function App() {
           setAllUsers(response.data);
         } catch (error) {
           console.error('Fehler beim Laden aller Benutzer:', error);
-          // Optionally, set an error state or show a notification
         }
       } else {
-        setAllUsers([]); // Clear if not admin or no token
+        setAllUsers([]);
       }
     };
-
     fetchAllUsers();
   }, [user, token]);
 
+  // Fetch notifications for the logged-in user
+  useEffect(() => {
+    const fetchUserNotifications = async () => {
+      if (user && token) {
+        try {
+          const response = await axios.get(`${API_URL}/notifications`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setUserNotifications(response.data);
+        } catch (error) {
+          console.error('Fehler beim Laden der Benachrichtigungen:', error);
+        }
+      } else {
+        setUserNotifications([]);
+      }
+    };
+    fetchUserNotifications();
+    // Re-fetch notifications when date changes as actions might have occurred
+    // or when selectedBooking changes to check for relevant notifications for the modal.
+  }, [user, token, date]); // Removed selectedBooking from deps, handled by its own effect
+
+
+  useEffect(() => {
+    if (selectedBooking && selectedBooking.status === 'angefragt' && user) {
+      const relevantNotif = userNotifications.find(
+        (n) =>
+          n.type === 'overlap_request' &&
+          n.relatedBookingId === selectedBooking.id &&
+          n.recipientUserId === user.id &&
+          n.response === 'pending'
+      );
+      setRelevantNotificationForModal(relevantNotif || null);
+    } else {
+      setRelevantNotificationForModal(null);
+    }
+  }, [selectedBooking, userNotifications, user]);
+
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // If the modal is shown, don't clear selection from clicks outside calendar
-      // as the modal itself is outside but manages the selection process.
-      // The modal has its own backdrop click handling.
-      if (showBookingModal) {
-        return;
-      }
-
-      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
-        // Click is outside the calendar component
-        if (selectionStart || selectionEnd) { // Only clear if there's something selected
+      // Handle clicks outside calendar to clear selection
+      if (!showBookingModal && calendarRef.current && !calendarRef.current.contains(event.target)) {
+        if (selectionStart || selectionEnd) {
           setSelectionStart(null);
           setSelectionEnd(null);
         }
+      }
+
+      // Handle clicks outside notifications dropdown to close it
+      if (showNotificationsDropdown &&
+          notificationsButtonRef.current && !notificationsButtonRef.current.contains(event.target) &&
+          notificationsDropdownRef.current && !notificationsDropdownRef.current.contains(event.target)) {
+        setShowNotificationsDropdown(false);
       }
     };
 
@@ -315,7 +372,7 @@ function App() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [calendarRef, showBookingModal, selectionStart, selectionEnd]); // Add dependencies
+  }, [calendarRef, showBookingModal, selectionStart, selectionEnd, showNotificationsDropdown]);
 
   // --- HANDLER FUNCTIONS ---
   const handleLoginSuccess = (data) => {
@@ -500,6 +557,47 @@ const handleUpdateBookingAdmin = async () => {
   }
 };
 
+const handleRespondToOverlap = async (notificationId, responseAction) => {
+  if (!token || !notificationId) {
+    alert("Aktion nicht möglich. Benachrichtigung nicht gefunden oder nicht angemeldet.");
+    return;
+  }
+  try {
+    await axios.post(
+      `${API_URL}/notifications/${notificationId}/respond`,
+      { action: responseAction }, // 'approved' or 'rejected'
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    // Refresh data and close modal
+    setDate(new Date(date.getTime())); // Triggers re-fetch of events & notifications
+    setSelectedBooking(null);
+    setRelevantNotificationForModal(null);
+    // Optionally, provide specific feedback to the user
+    alert(`Aktion '${responseAction === 'approved' ? 'Zustimmung' : 'Ablehnung'}' erfolgreich durchgeführt.`);
+  } catch (error) {
+    console.error(`Fehler beim Antworten auf Überschneidungsanfrage:`, error);
+    alert(error.response?.data?.msg || "Aktion konnte nicht durchgeführt werden.");
+    // Keep modal open if error occurs, user might want to retry or see context
+  }
+};
+
+const handleMarkNotificationAsRead = async (notificationId) => {
+  if (!token || !notificationId) return;
+  try {
+    await axios.post(
+      `${API_URL}/notifications/${notificationId}/mark-read`,
+      {}, // Empty body
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setUserNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+    );
+  } catch (error) {
+    console.error("Fehler beim Markieren der Benachrichtigung als gelesen:", error);
+    // No alert to user, as this is a background action mostly.
+  }
+};
+
 
   const handleSelecting = (range) => {
     // This function is called when the user is dragging to select a range.
@@ -657,27 +755,76 @@ const handleUpdateBookingAdmin = async () => {
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
 
-    const bookedBaseColor = docStyle.getPropertyValue('--booked-color').trim() || '#dc2626';
+    const bookedBaseColor = docStyle.getPropertyValue('--booked-color').trim() || '#dc2626'; // Red-600
+    const bookedTextColor = docStyle.getPropertyValue('--booked-text-color').trim() || '#ffffff';
+    const angefragtColor = docStyle.getPropertyValue('--angefragt-color') || '#fbbf24'; // Tailwind amber-400
+    const angefragtTextColor = docStyle.getPropertyValue('--angefragt-text-color') || '#422006'; // Darker text for amber
+    const cancelledColor = docStyle.getPropertyValue('--cancelled-color') || '#9ca3af'; // Tailwind gray-400
+    const cancelledTextColor = docStyle.getPropertyValue('--cancelled-text-color') || '#4b5563'; // Tailwind gray-600
+
 
     switch (event.type) {
       case 'booking':
-        style.backgroundColor = bookedBaseColor;
-        style.color = docStyle.getPropertyValue('--booked-text-color').trim() || '#ffffff';
-        style.opacity = 0.9; // Slightly more opaque for main bookings
-
-        if (event.status === 'reserved') {
-          style.backgroundColor = hexToRgba(bookedBaseColor, 0.6); // 40% transparency
-          // For reserved, explicitly use a contrasting text color, or inherit from bookedTextColor and hope for the best.
-          // Using bookedTextColor might be fine if it's generally chosen to contrast with bookedBaseColor.
-          // If bookedTextColor is light, and bookedBaseColor is light, this could be an issue.
-          // For now, let's use bookedTextColor, assuming user configures it well.
-          style.color = docStyle.getPropertyValue('--booked-text-color').trim() || '#111827'; // Fallback to dark if not set
-          style.fontWeight = 'normal';
-          style.opacity = 0.75; // Slightly more transparent for reserved
+        switch (event.status) {
+          case 'booked':
+            style.backgroundColor = bookedBaseColor;
+            style.color = bookedTextColor;
+            style.opacity = 0.9;
+            // Check if this 'booked' event is being overlapped by a pending request
+            const isBookedAndOverlapped = userNotifications.some(n =>
+              n.type === 'overlap_request' &&
+              n.response === 'pending' &&
+              n.recipientUserId === user?.id && // Current user is the one who needs to respond
+              n.relatedBooking?.originalBookingId === event.id // The 'angefragt' booking points to this event
+            );
+            if (isBookedAndOverlapped) {
+              style.border = `2px dashed ${angefragtColor}`; // Use 'angefragt' color for the dashed border
+              style.boxShadow = `0 0 5px ${angefragtColor}`;
+            }
+            break;
+          case 'reserved':
+            style.backgroundColor = hexToRgba(bookedBaseColor, 0.6);
+            style.color = bookedTextColor;
+            style.fontWeight = 'normal';
+            style.opacity = 0.75;
+            // Check if this 'reserved' event is being overlapped
+            const isReservedAndOverlapped = userNotifications.some(n =>
+              n.type === 'overlap_request' &&
+              n.response === 'pending' &&
+              n.recipientUserId === user?.id &&
+              n.relatedBooking?.originalBookingId === event.id
+            );
+            if (isReservedAndOverlapped) {
+              style.border = `2px dashed ${angefragtColor}`;
+              style.boxShadow = `0 0 5px ${angefragtColor}`;
+            }
+            break;
+          case 'angefragt':
+            style.backgroundColor = angefragtColor;
+            style.color = angefragtTextColor;
+            style.opacity = 0.8;
+            // Optional: Add a striped background for 'angefragt'
+            style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.2) 5px, rgba(255,255,255,0.2) 10px)';
+            break;
+          case 'cancelled':
+            style.backgroundColor = cancelledColor;
+            style.color = cancelledTextColor;
+            style.textDecoration = 'line-through';
+            style.opacity = 0.6;
+            // For cancelled bookings, we might not want them to be clickable or as prominent.
+            // The filter in fetchAllEvents might already remove them, or they can be styled to be less intrusive.
+            // If they are still passed to the calendar, ensure cursor is default.
+            style.cursor = 'default';
+            break;
+          default: // Should not happen if status is always one of the above
+            style.backgroundColor = '#64748b'; // Slate fallback
+            style.color = '#ffffff';
+            style.opacity = 0.8;
+            break;
         }
         break;
       case 'publicHoliday':
-        style.backgroundColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
+        style.backgroundColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb'; // Blue-600
         style.color = docStyle.getPropertyValue('--public-holiday-text-color').trim() || '#ffffff';
         style.zIndex = 10;
         style.opacity = 0.9;
@@ -725,17 +872,68 @@ const handleUpdateBookingAdmin = async () => {
               {/* Added mr-4 for right margin */}
               Angemeldet als: {user.displayName}
             </span>
+
+            {/* Notifications Bell Icon & Dropdown */}
+            <div className="relative" ref={notificationsButtonRef}>
+              <button
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                className="btn p-2 relative" // Basic button styling, adjust as needed
+                aria-label="Benachrichtigungen"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                </svg>
+                {userNotifications.filter(n => !n.isRead).length > 0 && (
+                  <span className="absolute top-0 right-0 block h-4 w-4 transform -translate-y-1/2 translate-x-1/2 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                    {userNotifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
+              </button>
+              {showNotificationsDropdown && (
+                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                  {userNotifications.length === 0 ? (
+                    <p className="p-4 text-sm text-gray-500">Keine neuen Benachrichtigungen.</p>
+                  ) : (
+                    <ul>
+                      {userNotifications.map(notification => (
+                        <li
+                          key={notification.id}
+                          className={`p-3 border-b border-gray-200 hover:bg-gray-50 ${!notification.isRead ? 'font-semibold bg-blue-50' : ''}`}
+                          onClick={() => !notification.isRead && handleMarkNotificationAsRead(notification.id)}
+                        >
+                          <p className="text-sm text-gray-700 mb-1">{notification.message}</p>
+                          <p className="text-xs text-gray-500">{format(new Date(notification.createdAt), 'dd.MM.yyyy HH:mm')}</p>
+                          {notification.type === 'overlap_request' && notification.response === 'pending' && (
+                            <div className="mt-2 flex space-x-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRespondToOverlap(notification.id, 'approved'); setShowNotificationsDropdown(false);}}
+                                className="btn bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1">
+                                Zustimmen
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRespondToOverlap(notification.id, 'rejected'); setShowNotificationsDropdown(false);}}
+                                className="btn bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1">
+                                Ablehnen
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => setAppView(appView === 'calendar' ? 'settings' : 'calendar')}
-              className="btn btn-primary" // Apply global button style
-              // Removed inline style, relying on btn-primary from index.css or custom var if needed
+              className="btn btn-primary"
             >
               {appView === 'calendar' ? 'Einstellungen' : 'Kalender'}
             </button>
             <button
               onClick={handleLogout}
-              className="btn btn-secondary" // Apply global button style
-               // Removed inline style, relying on btn-secondary from index.css or custom var if needed
+              className="btn btn-secondary"
             >
               Abmelden
             </button>
@@ -854,9 +1052,46 @@ const handleUpdateBookingAdmin = async () => {
                     // Regular User View Fields
                     <>
                       <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
-                      <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${selectedBooking.status === 'reserved' ? 'text-yellow-600' : 'text-red-700'}`}>{selectedBooking.status === 'reserved' ? 'Reserviert' : 'Gebucht'}</span></p>
+                      <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${
+                        selectedBooking.status === 'reserved' ? 'text-yellow-600' :
+                        selectedBooking.status === 'angefragt' ? 'text-amber-600' : // Tailwind Amber for 'angefragt'
+                        selectedBooking.status === 'cancelled' ? 'text-gray-500 line-through' : // Gray and strikethrough for 'cancelled'
+                        'text-red-700' // Default for 'booked'
+                        }`}>
+                        {selectedBooking.status === 'reserved' ? 'Reserviert' :
+                         selectedBooking.status === 'angefragt' ? 'Angefragt' :
+                         selectedBooking.status === 'cancelled' ? 'Storniert' :
+                         'Gebucht'}
+                        </span></p>
                       <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
                       <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
+
+                      {/* Overlap Response Section for non-admin users if it's their 'angefragt' booking or affects them */}
+                      {relevantNotificationForModal && selectedBooking.status === 'angefragt' && selectedBooking.userId !== user.id && (
+                        <div className="my-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md">
+                          <p className="text-sm text-yellow-700">
+                            Diese Buchung überschneidet sich mit Ihrer bestehenden Buchung.
+                            <strong> {relevantNotificationForModal.message} </strong> {/* Display full message from notification */}
+                          </p>
+                          <div className="mt-3 flex space-x-2">
+                            <button
+                              onClick={() => handleRespondToOverlap(relevantNotificationForModal.id, 'approved')}
+                              className="btn bg-green-500 hover:bg-green-600 text-white text-sm px-3 py-1">
+                              Überschneidung zustimmen
+                            </button>
+                            <button
+                              onClick={() => handleRespondToOverlap(relevantNotificationForModal.id, 'rejected')}
+                              className="btn bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1">
+                              Überschneidung ablehnen
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                       {selectedBooking.status === 'angefragt' && selectedBooking.userId === user.id && (
+                         <p className="text-sm text-amber-700 my-2 p-2 bg-amber-50 border border-amber-300 rounded-md">
+                           Diese Anfrage wartet auf Bestätigung durch den primären Bucher.
+                         </p>
+                       )}
                     </>
                   )}
                 </>
@@ -864,7 +1099,9 @@ const handleUpdateBookingAdmin = async () => {
                 // Delete Confirmation View
                 <>
                   <h3 className="text-2xl font-bold mb-4 text-gray-800">Löschen bestätigen</h3>
-                  <p className="mb-6">Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'} wirklich unwiderruflich löschen?</p>
+                  <p className="mb-6">Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' :
+                                      selectedBooking.status === 'angefragt' ? 'Anfrage' :
+                                      'Buchung'} wirklich unwiderruflich löschen?</p>
                 </>
               )}
             </div>
@@ -873,16 +1110,16 @@ const handleUpdateBookingAdmin = async () => {
             <div className="mt-auto pt-4">
               {!showConfirmDelete ? (
                 <div className={`flex ${user && user.isAdmin ? 'justify-center' : 'justify-between items-center'} space-x-2`}>
-                  {user && !user.isAdmin && (
+                  {user && !user.isAdmin && selectedBooking.status !== 'angefragt' && selectedBooking.status !== 'cancelled' && (
                     <div>
                       {selectedBooking.status === 'reserved' && <button onClick={() => handleChangeBookingStatus(selectedBooking, 'booked')} className="btn bg-green-500 hover:bg-green-600 text-white">Zu Buchung ändern</button>}
                       {selectedBooking.status === 'booked' && <button onClick={() => handleChangeBookingStatus(selectedBooking, 'reserved')} className="btn bg-yellow-500 hover:bg-yellow-600 text-white">Zu Reservierung ändern</button>}
                     </div>
                   )}
                   <div className="flex space-x-2">
-                    {user && user.isAdmin && <button onClick={() => handleUpdateBookingAdmin()} className="btn btn-primary">Änderungen speichern</button>}
-                    <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>
-                    <button onClick={() => { setSelectedBooking(null); if (user && user.isAdmin) fetchAllEvents(); }} className="btn btn-secondary">Schließen</button>
+                    {user && user.isAdmin && selectedBooking.status !== 'cancelled' && <button onClick={() => handleUpdateBookingAdmin()} className="btn btn-primary">Änderungen speichern</button>}
+                    {selectedBooking.status !== 'cancelled' && <button onClick={() => setShowConfirmDelete(true)} className="btn bg-red-600 hover:bg-red-700 text-white">Löschen</button>}
+                    <button onClick={() => { setSelectedBooking(null); setRelevantNotificationForModal(null); }} className="btn btn-secondary">Schließen</button>
                   </div>
                 </div>
               ) : (
