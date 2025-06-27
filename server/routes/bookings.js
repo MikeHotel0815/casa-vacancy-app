@@ -380,18 +380,34 @@ router.put('/:id', authMiddleware, async (req, res) => {
             // Also, destroy any 'overlap_request' notifications related to the booking being updated if it was primary for them.
             // This is tricky because the 'angefragt' booking holds the originalBookingId.
             // We should cancel 'angefragt' requests that were targeting the booking we just deleted if its dates change.
-             await Notification.destroy({
+
+            // Step 1: Find 'angefragt' bookings that were pointing to the booking being deleted.
+            const angefragtBookingsToCancel = await Booking.findAll({
                 where: {
-                    type: 'overlap_request',
-                    '$relatedBooking.originalBookingId$': originalBookingIdForDelete
+                    originalBookingId: originalBookingIdForDelete,
+                    status: 'angefragt'
                 },
-                include: [{ model: Booking, as: 'relatedBooking' }],
                 transaction
             });
-             await Booking.update( //
-                { status: 'cancelled', originalBookingId: null },
-                { where: { originalBookingId: originalBookingIdForDelete, status: 'angefragt'}, transaction}
-            );
+
+            if (angefragtBookingsToCancel.length > 0) {
+                const angefragtBookingIds = angefragtBookingsToCancel.map(b => b.id);
+
+                // Step 2: Delete 'overlap_request' notifications related to these 'angefragt' bookings.
+                await Notification.destroy({
+                    where: {
+                        relatedBookingId: { [Op.in]: angefragtBookingIds },
+                        type: 'overlap_request'
+                    },
+                    transaction
+                });
+
+                // Step 3: Update these 'angefragt' bookings to 'cancelled'.
+                await Booking.update(
+                    { status: 'cancelled', originalBookingId: null },
+                    { where: { id: { [Op.in]: angefragtBookingIds } }, transaction }
+                );
+            }
 
 
             const newBookingSegments = await processAndCreateBookings({
