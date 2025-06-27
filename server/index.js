@@ -46,7 +46,7 @@ const startServer = async () => {
     // {force: false} erstellt Tabellen nur, wenn sie nicht existieren.
     // {force: true} löscht Tabellen und erstellt sie neu (Datenverlust!).
     // Temporarily removing { alter: true } to diagnose startup error
-    await sequelize.sync();
+    await sequelize.sync({alter: true, force: false});
     console.log('Datenbank-Tabellen wurden erfolgreich synchronisiert.');
 
     // 3. Den Server starten

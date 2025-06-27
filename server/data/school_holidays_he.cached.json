@@ -1,68 +1,437 @@
 {
-  "lastFetched": "2023-01-01T00:00:00.000Z",
+  "lastFetched": "2025-06-27T11:43:09.062Z",
   "holidays": [
-  {
-    "name": "Winterferien",
-    "start": "2024-02-19T00:00:00.000Z",
-    "end": "2024-02-23T00:00:00.000Z",
-    "year": 2024,
-    "slug": "winterferien"
-  },
-  {
-    "name": "Osterferien",
-    "start": "2024-04-02T00:00:00.000Z",
-    "end": "2024-04-13T00:00:00.000Z",
-    "year": 2024,
-    "slug": "osterferien"
-  },
-  {
-    "name": "Sommerferien",
-    "start": "2024-07-15T00:00:00.000Z",
-    "end": "2024-08-23T00:00:00.000Z",
-    "year": 2024,
-    "slug": "sommerferien"
-  },
-  {
-    "name": "Herbstferien",
-    "start": "2024-10-14T00:00:00.000Z",
-    "end": "2024-10-25T00:00:00.000Z",
-    "year": 2024,
-    "slug": "herbstferien"
-  },
-  {
-    "name": "Weihnachtsferien",
-    "start": "2024-12-23T00:00:00.000Z",
-    "end": "2025-01-10T00:00:00.000Z",
-    "year": 2024,
-    "slug": "weihnachtsferien"
-  },
-  {
-    "name": "Osterferien",
-    "start": "2025-04-07T00:00:00.000Z",
-    "end": "2025-04-19T00:00:00.000Z",
-    "year": 2025,
-    "slug": "osterferien"
-  },
-  {
-    "name": "Sommerferien",
-    "start": "2025-07-07T00:00:00.000Z",
-    "end": "2025-08-15T00:00:00.000Z",
-    "year": 2025,
-    "slug": "sommerferien"
-  },
-  {
-    "name": "Herbstferien",
-    "start": "2025-10-06T00:00:00.000Z",
-    "end": "2025-10-18T00:00:00.000Z",
-    "year": 2025,
-    "slug": "herbstferien"
-  },
-  {
-    "name": "Weihnachtsferien",
-    "start": "2025-12-22T00:00:00.000Z",
-    "end": "2026-01-09T00:00:00.000Z",
-    "year": 2025,
-    "slug": "weihnachtsferien"
-  }
-]
+    {
+      "start": "2017-04-03",
+      "end": "2017-04-13",
+      "year": 2017,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2017",
+      "slug": "osterferien hessen 2017-2017-HE"
+    },
+    {
+      "start": "2017-07-03",
+      "end": "2017-08-11",
+      "year": 2017,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2017",
+      "slug": "sommerferien hessen 2017-2017-HE"
+    },
+    {
+      "start": "2017-10-09",
+      "end": "2017-10-20",
+      "year": 2017,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2017",
+      "slug": "herbstferien hessen 2017-2017-HE"
+    },
+    {
+      "start": "2017-12-27",
+      "end": "2018-01-12",
+      "year": 2017,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2017",
+      "slug": "weihnachtsferien hessen 2017-2017-HE"
+    },
+    {
+      "start": "2018-03-26",
+      "end": "2018-04-06",
+      "year": 2018,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2018",
+      "slug": "osterferien hessen 2018-2018-HE"
+    },
+    {
+      "start": "2018-06-25",
+      "end": "2018-08-03",
+      "year": 2018,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2018",
+      "slug": "sommerferien hessen 2018-2018-HE"
+    },
+    {
+      "start": "2018-10-01",
+      "end": "2018-10-12",
+      "year": 2018,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2018",
+      "slug": "herbstferien hessen 2018-2018-HE"
+    },
+    {
+      "start": "2018-12-24",
+      "end": "2019-01-11",
+      "year": 2018,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2018",
+      "slug": "weihnachtsferien hessen 2018-2018-HE"
+    },
+    {
+      "start": "2019-04-15",
+      "end": "2019-04-27",
+      "year": 2019,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2019",
+      "slug": "osterferien hessen 2019-2019-HE"
+    },
+    {
+      "start": "2019-07-01",
+      "end": "2019-08-09",
+      "year": 2019,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2019",
+      "slug": "sommerferien hessen 2019-2019-HE"
+    },
+    {
+      "start": "2019-09-30",
+      "end": "2019-10-12",
+      "year": 2019,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2019",
+      "slug": "herbstferien hessen 2019-2019-HE"
+    },
+    {
+      "start": "2019-12-23",
+      "end": "2020-01-11",
+      "year": 2019,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2019",
+      "slug": "weihnachtsferien hessen 2019-2019-HE"
+    },
+    {
+      "start": "2020-04-06",
+      "end": "2020-04-18",
+      "year": 2020,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2020",
+      "slug": "osterferien hessen 2020-2020-HE"
+    },
+    {
+      "start": "2020-07-06",
+      "end": "2020-08-14",
+      "year": 2020,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2020",
+      "slug": "sommerferien hessen 2020-2020-HE"
+    },
+    {
+      "start": "2020-10-05",
+      "end": "2020-10-17",
+      "year": 2020,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2020",
+      "slug": "herbstferien hessen 2020-2020-HE"
+    },
+    {
+      "start": "2020-12-21",
+      "end": "2021-01-09",
+      "year": 2020,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2020",
+      "slug": "weihnachtsferien hessen 2020-2020-HE"
+    },
+    {
+      "start": "2021-04-06",
+      "end": "2021-04-16",
+      "year": 2021,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2021",
+      "slug": "osterferien hessen 2021-2021-HE"
+    },
+    {
+      "start": "2021-07-19",
+      "end": "2021-08-27",
+      "year": 2021,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2021",
+      "slug": "sommerferien hessen 2021-2021-HE"
+    },
+    {
+      "start": "2021-10-11",
+      "end": "2021-10-23",
+      "year": 2021,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2021",
+      "slug": "herbstferien hessen 2021-2021-HE"
+    },
+    {
+      "start": "2021-12-23",
+      "end": "2022-01-08",
+      "year": 2021,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2021",
+      "slug": "weihnachtsferien hessen 2021-2021-HE"
+    },
+    {
+      "start": "2022-04-11",
+      "end": "2022-04-23",
+      "year": 2022,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2022",
+      "slug": "osterferien hessen 2022-2022-HE"
+    },
+    {
+      "start": "2022-07-25",
+      "end": "2022-09-02",
+      "year": 2022,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2022",
+      "slug": "sommerferien hessen 2022-2022-HE"
+    },
+    {
+      "start": "2022-10-24",
+      "end": "2022-10-29",
+      "year": 2022,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2022",
+      "slug": "herbstferien hessen 2022-2022-HE"
+    },
+    {
+      "start": "2022-12-22",
+      "end": "2023-01-07",
+      "year": 2022,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2022",
+      "slug": "weihnachtsferien hessen 2022-2022-HE"
+    },
+    {
+      "start": "2023-04-03",
+      "end": "2023-04-22",
+      "year": 2023,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2023",
+      "slug": "osterferien hessen 2023-2023-HE"
+    },
+    {
+      "start": "2023-07-24",
+      "end": "2023-09-01",
+      "year": 2023,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2023",
+      "slug": "sommerferien hessen 2023-2023-HE"
+    },
+    {
+      "start": "2023-10-23",
+      "end": "2023-10-28",
+      "year": 2023,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2023",
+      "slug": "herbstferien hessen 2023-2023-HE"
+    },
+    {
+      "start": "2023-12-27",
+      "end": "2024-01-13",
+      "year": 2023,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2023",
+      "slug": "weihnachtsferien hessen 2023-2023-HE"
+    },
+    {
+      "start": "2024-03-25",
+      "end": "2024-04-13",
+      "year": 2024,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2024",
+      "slug": "osterferien hessen 2024-2024-HE"
+    },
+    {
+      "start": "2024-07-15",
+      "end": "2024-08-24",
+      "year": 2024,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2024",
+      "slug": "sommerferien hessen 2024-2024-HE"
+    },
+    {
+      "start": "2024-10-14",
+      "end": "2024-10-26",
+      "year": 2024,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2024",
+      "slug": "herbstferien hessen 2024-2024-HE"
+    },
+    {
+      "start": "2024-12-23",
+      "end": "2025-01-11",
+      "year": 2024,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2024",
+      "slug": "weihnachtsferien hessen 2024-2024-HE"
+    },
+    {
+      "start": "2025-04-07",
+      "end": "2025-04-21",
+      "year": 2025,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2025",
+      "slug": "osterferien hessen 2025-2025-HE"
+    },
+    {
+      "start": "2025-07-07",
+      "end": "2025-08-15",
+      "year": 2025,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2025",
+      "slug": "sommerferien hessen 2025-2025-HE"
+    },
+    {
+      "start": "2025-10-06",
+      "end": "2025-10-18",
+      "year": 2025,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2025",
+      "slug": "herbstferien hessen 2025-2025-HE"
+    },
+    {
+      "start": "2025-12-22",
+      "end": "2026-01-10",
+      "year": 2025,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2025",
+      "slug": "weihnachtsferien hessen 2025-2025-HE"
+    },
+    {
+      "start": "2026-03-30",
+      "end": "2026-04-10",
+      "year": 2026,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2026",
+      "slug": "osterferien hessen 2026-2026-HE"
+    },
+    {
+      "start": "2026-06-29",
+      "end": "2026-08-07",
+      "year": 2026,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2026",
+      "slug": "sommerferien hessen 2026-2026-HE"
+    },
+    {
+      "start": "2026-10-05",
+      "end": "2026-10-17",
+      "year": 2026,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2026",
+      "slug": "herbstferien hessen 2026-2026-HE"
+    },
+    {
+      "start": "2026-12-23",
+      "end": "2027-01-12",
+      "year": 2026,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2026",
+      "slug": "weihnachtsferien hessen 2026-2026-HE"
+    },
+    {
+      "start": "2027-03-22",
+      "end": "2027-04-02",
+      "year": 2027,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2027",
+      "slug": "osterferien hessen 2027-2027-HE"
+    },
+    {
+      "start": "2027-06-28",
+      "end": "2027-08-06",
+      "year": 2027,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2027",
+      "slug": "sommerferien hessen 2027-2027-HE"
+    },
+    {
+      "start": "2027-10-04",
+      "end": "2027-10-16",
+      "year": 2027,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2027",
+      "slug": "herbstferien hessen 2027-2027-HE"
+    },
+    {
+      "start": "2027-12-23",
+      "end": "2028-01-11",
+      "year": 2027,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2027",
+      "slug": "weihnachtsferien hessen 2027-2027-HE"
+    },
+    {
+      "start": "2028-04-03",
+      "end": "2028-04-14",
+      "year": 2028,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2028",
+      "slug": "osterferien hessen 2028-2028-HE"
+    },
+    {
+      "start": "2028-07-03",
+      "end": "2028-08-11",
+      "year": 2028,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2028",
+      "slug": "sommerferien hessen 2028-2028-HE"
+    },
+    {
+      "start": "2028-10-09",
+      "end": "2028-10-20",
+      "year": 2028,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2028",
+      "slug": "herbstferien hessen 2028-2028-HE"
+    },
+    {
+      "start": "2028-12-27",
+      "end": "2029-01-12",
+      "year": 2028,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2028",
+      "slug": "weihnachtsferien hessen 2028-2028-HE"
+    },
+    {
+      "start": "2029-03-29",
+      "end": "2029-04-13",
+      "year": 2029,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2029",
+      "slug": "osterferien hessen 2029-2029-HE"
+    },
+    {
+      "start": "2029-07-16",
+      "end": "2029-08-24",
+      "year": 2029,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2029",
+      "slug": "sommerferien hessen 2029-2029-HE"
+    },
+    {
+      "start": "2029-10-15",
+      "end": "2029-10-26",
+      "year": 2029,
+      "stateCode": "HE",
+      "name": "herbstferien hessen 2029",
+      "slug": "herbstferien hessen 2029-2029-HE"
+    },
+    {
+      "start": "2029-12-24",
+      "end": "2030-01-11",
+      "year": 2029,
+      "stateCode": "HE",
+      "name": "weihnachtsferien hessen 2029",
+      "slug": "weihnachtsferien hessen 2029-2029-HE"
+    },
+    {
+      "start": "2030-04-08",
+      "end": "2030-04-22",
+      "year": 2030,
+      "stateCode": "HE",
+      "name": "osterferien hessen 2030",
+      "slug": "osterferien hessen 2030-2030-HE"
+    },
+    {
+      "start": "2030-07-22",
+      "end": "2030-08-30",
+      "year": 2030,
+      "stateCode": "HE",
+      "name": "sommerferien hessen 2030",
+      "slug": "sommerferien hessen 2030-2030-HE"
+    }
+  ]
 }
