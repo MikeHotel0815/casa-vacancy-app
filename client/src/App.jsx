@@ -919,7 +919,7 @@ const handleDeleteNotification = async (notificationId) => {
                 )}
               </button>
               {showNotificationsDropdown && (
-                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-96 max-h-[500px] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
+                <div ref={notificationsDropdownRef} className="absolute right-0 mt-2 w-[640px] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg z-20">
                   {userNotifications.length === 0 ? (
                     <p className="p-4 text-sm text-gray-500">Keine neuen Benachrichtigungen.</p>
                   ) : (
