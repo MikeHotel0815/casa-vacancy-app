@@ -171,9 +171,11 @@ router.post('/:id/respond', authMiddleware, async (req, res) => {
         return res.status(500).json({msg: "Logikfehler bei der Anpassung der primären Buchung."});
       }
 
-      // Validate primary booking(s) after modification (ensure startDate < endDate)
-      if (new Date(primaryBooking.startDate) >= new Date(primaryBooking.endDate) && primaryBooking.status !== 'cancelled') {
-         // If modification made it invalid (e.g. start = end), consider it fully replaced, so cancel it.
+      // Validate primary booking(s) after modification (ensure startDate <= endDate)
+      // A booking where startDate > endDate is invalid and should be cancelled.
+      // A booking where startDate = endDate is a valid single-day booking.
+      if (new Date(primaryBooking.startDate) > new Date(primaryBooking.endDate) && primaryBooking.status !== 'cancelled') {
+         // If modification made it invalid (start is after end), consider it cancelled.
         if (primaryBooking.status !== 'cancelled') { // ensure not already cancelled
             primaryBooking.status = 'cancelled';
             await primaryBooking.save({ transaction });

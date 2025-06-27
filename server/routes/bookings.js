@@ -105,11 +105,18 @@ async function processAndCreateBookings({
       const conflictEnd = new Date(conflict.endDate);
 
       if (currentStartDate < conflictStart) {
-        const segmentEndDate = new Date(Math.min(requestEndDate.getTime(), conflictStart.getTime()));
-        if (currentStartDate < segmentEndDate) {
+        // Determine the end date for the segment before the conflict.
+        // It should end one day before the conflict starts.
+        const preConflictSegmentEndDate = new Date(conflictStart.getTime());
+        preConflictSegmentEndDate.setDate(preConflictSegmentEndDate.getDate() - 1);
+
+        // Ensure this segment does not extend beyond the user's requested end date.
+        const actualSegmentEndDate = new Date(Math.min(requestEndDate.getTime(), preConflictSegmentEndDate.getTime()));
+
+        if (currentStartDate <= actualSegmentEndDate) { // Use <= to allow single-day segments
           const segment = await Booking.create({
             startDate: currentStartDate.toISOString().split('T')[0],
-            endDate: segmentEndDate.toISOString().split('T')[0],
+            endDate: actualSegmentEndDate.toISOString().split('T')[0],
             userId: finalUserId, displayName: finalDisplayName, status: requestedStatus, originalRequestId, isSplit: true,
           }, { transaction });
           createdBookingSegments.push(segment);
