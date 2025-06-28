@@ -12,6 +12,8 @@ const bookingRoutes = require('./routes/bookings');
 const holidayRoutes = require('./routes/holidays');
 const userRoutes = require('./routes/users'); // Importiere die neuen Benutzerrouten
 const notificationRoutes = require('./routes/notifications'); // Importiere die neuen Notification-Routen
+const meterRoutes = require('./routes/meters'); // Importiere die Zähler-Routen
+const statisticsRoutes = require('./routes/statistics'); // Importiere die Statistik-Routen
 
 // --- Initialisierung ---
 const app = express();
@@ -34,6 +36,10 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/users', userRoutes);
 // Alle Notification-Routen werden unter /api/notifications erreichbar sein
 app.use('/api/notifications', notificationRoutes);
+// Alle Zähler-Routen werden unter /api/meters erreichbar sein
+app.use('/api/meters', meterRoutes);
+// Alle Statistik-Routen werden unter /api/statistics erreichbar sein
+app.use('/api/statistics', statisticsRoutes);
 
 // --- Server-Start und Datenbank-Synchronisation ---
 const startServer = async () => {

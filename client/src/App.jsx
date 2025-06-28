@@ -74,6 +74,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import BookingConfirmationModal from './components/BookingConfirmationModal'; // Import new modal
 import Settings from './components/Settings'; // Import Settings component
+import AdminLayout from './components/Admin/AdminLayout'; // Import AdminLayout
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -122,8 +123,8 @@ function App() {
   // --- AUTH & VIEW STATES ---
   const [user, setUser] = useState(null); // User object, will include isAdmin
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [view, setView] = useState('login'); // Can be 'login', 'register', 'calendar', 'settings'
-  const [appView, setAppView] = useState('calendar'); // 'calendar' or 'settings'
+  // const [view, setView] = useState('login'); // 'view' state for login/register will be implicitly handled by user state
+  const [currentMainView, setCurrentMainView] = useState('calendar'); // 'calendar', 'settings', 'admin'
   const [allUsers, setAllUsers] = useState([]); // For admin to select user
 
   // --- CALENDAR & MODAL STATES ---
@@ -380,7 +381,7 @@ function App() {
     localStorage.setItem('user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
-    setAppView('calendar'); // After login, show calendar
+    setCurrentMainView('calendar'); // After login, show calendar
   };
 
   const handleLogout = () => {
@@ -388,8 +389,8 @@ function App() {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-    setView('login'); // Go back to login screen
-    setAppView('calendar'); // Reset app view
+    // No need to setView, as the !user condition will render Login/Register
+    setCurrentMainView('calendar'); // Reset main view to calendar for next login
   };
 
   const handleUpdateUser = async (updatedUser) => {
@@ -855,22 +856,34 @@ const handleMarkNotificationAsRead = async (notificationId) => {
   };
 
   // --- RENDER ---
+  const [loginRegisterView, setLoginRegisterView] = useState('login'); // 'login' or 'register'
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-        {view === 'login' ? (
-          <Login onLoginSuccess={handleLoginSuccess} setView={setView} />
+        {loginRegisterView === 'login' ? (
+          <Login onLoginSuccess={handleLoginSuccess} setView={setLoginRegisterView} />
         ) : (
-          <Register setView={setView} />
+          <Register setView={setLoginRegisterView} />
         )}
       </div>
     );
   }
 
+  // If user is logged in, decide which main view to show
+  if (currentMainView === 'admin') {
+    return <AdminLayout
+              currentUser={user}
+              onLogout={handleLogout}
+              navigateToCalendar={() => setCurrentMainView('calendar')}
+           />;
+  }
+
+  // Default view for logged-in user (calendar or settings)
   return (
     <>
       <div
-        className="p-4 md:p-8 h-screen flex flex-col max-w-full mx-auto" // Use max-w-full for full width
+        className="p-4 md:p-8 h-screen flex flex-col max-w-full mx-auto"
         style={{ backgroundColor: 'var(--background-color)' }}
       >
         <header className="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-gray-300">
@@ -879,7 +892,6 @@ const handleMarkNotificationAsRead = async (notificationId) => {
           </h1>
           <div className="flex items-center space-x-3 mt-2 md:mt-0">
             <span className="text-sm font-medium mr-4" style={{ color: 'var(--background-text-color)' }}>
-              {/* Added mr-4 for right margin */}
               Angemeldet als: {user.displayName}
             </span>
 
@@ -887,7 +899,7 @@ const handleMarkNotificationAsRead = async (notificationId) => {
             <div className="relative" ref={notificationsButtonRef}>
               <button
                 onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
-                className="btn p-2 relative" // Basic button styling, adjust as needed
+                className="btn p-2 relative"
                 aria-label="Benachrichtigungen"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -934,12 +946,19 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                 </div>
               )}
             </div>
-
+            {user.isAdmin && (
+              <button
+                onClick={() => setCurrentMainView('admin')}
+                className="btn btn-accent" // Use a distinct color for Admin button
+              >
+                Admin Panel
+              </button>
+            )}
             <button
-              onClick={() => setAppView(appView === 'calendar' ? 'settings' : 'calendar')}
+              onClick={() => setCurrentMainView(currentMainView === 'calendar' ? 'settings' : 'calendar')}
               className="btn btn-primary"
             >
-              {appView === 'calendar' ? 'Einstellungen' : 'Kalender'}
+              {currentMainView === 'calendar' ? 'Einstellungen' : 'Kalender'}
             </button>
             <button
               onClick={handleLogout}
@@ -950,8 +969,8 @@ const handleMarkNotificationAsRead = async (notificationId) => {
           </div>
         </header>
 
-        {appView === 'calendar' && (
-          <div className="flex-grow card-custom p-0 overflow-hidden" ref={calendarRef}> {/* Apply card style, remove padding for calendar */}
+        {currentMainView === 'calendar' && (
+          <div className="flex-grow card-custom p-0 overflow-hidden" ref={calendarRef}>
             <Calendar
               localizer={localizer}
               events={events.filter(event => event.type !== 'publicHoliday')}
@@ -984,57 +1003,54 @@ const handleMarkNotificationAsRead = async (notificationId) => {
               components={{
                 month: { dateHeader: (props) => <CustomDateHeader {...props} allEvents={events} /> }
               }}
-              style={{ height: '100%' }} // Calendar itself needs height 100%
-              className="rounded-lg" // Ensure calendar corners are rounded if card has padding
+              style={{ height: '100%' }}
+              className="rounded-lg"
             />
           </div>
         )}
 
-        {appView === 'settings' && (
-          <div className="card-custom"> {/* Wrap settings in a card */}
+        {currentMainView === 'settings' && (
+          <div className="card-custom">
             <Settings user={user} onUpdateUser={handleUpdateUser} />
           </div>
         )}
 
-        {appView === 'calendar' && selectionStart && !selectionEnd && (
+        {currentMainView === 'calendar' && selectionStart && !selectionEnd && (
           <div className="mt-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-center animate-pulse">
             Startdatum ausgewählt: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong>. Bitte Enddatum auswählen oder Zeitraum ziehen.
           </div>
         )}
-        {appView === 'calendar' && selectionStart && selectionEnd && (
+        {currentMainView === 'calendar' && selectionStart && selectionEnd && (
           <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-center">
             Ausgewählter Zeitraum: <strong>{format(selectionStart, 'dd.MM.yyyy')}</strong> bis <strong>{format(selectionEnd, 'dd.MM.yyyy')}</strong>.
           </div>
         )}
       </div>
 
-      {appView === 'calendar' && <BookingConfirmationModal
+      {currentMainView === 'calendar' && <BookingConfirmationModal
         isOpen={showBookingModal}
         onClose={handleModalClose}
         onSubmit={handleModalSubmit}
         initialStartDate={modalStartDate}
         initialEndDate={modalEndDate}
-         currentUser={user} // Pass current user (contains isAdmin)
-         allUsers={allUsers} // Pass all users for admin dropdown
+         currentUser={user}
+         allUsers={allUsers}
       />}
 
-      {appView === 'calendar' && selectedBooking && (
+      {currentMainView === 'calendar' && selectedBooking && (
         <Modal>
-          {/* Aggressively using explicit widths with w-[value] and ensuring it's part of card-custom for consistent padding/shadow */}
           <div
             className={`card-custom mx-4 min-h-[400px] flex flex-col ${
               user && user.isAdmin && !showConfirmDelete
-                ? 'w-[500px] max-w-[95vw]' // Wider for admin edit
-                : 'w-[600px] max-w-[95vw]' // Wider for user view / delete confirm
+                ? 'w-[500px] max-w-[95vw]'
+                : 'w-[600px] max-w-[95vw]'
             }`}
           >
-            {/* Scrollable Content Area */}
-            <div className="flex-grow overflow-y-auto pb-4 pr-2"> {/* Added pb-4 for bottom padding before buttons, pr-2 for scrollbar */}
+            <div className="flex-grow overflow-y-auto pb-4 pr-2">
               {!showConfirmDelete ? (
                 <>
                   <h3 className="text-2xl font-bold mb-4 text-gray-800">Details zu: {selectedBooking.status === 'reserved' ? 'Reservierung' : 'Buchung'}</h3>
                   {user && user.isAdmin ? (
-                    // Admin Edit Fields
                     <>
                       <div className="mb-4">
                         <label htmlFor="editBookingUser" className="block text-sm font-medium text-gray-700 mb-1">Benutzer:</label>
@@ -1055,18 +1071,19 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                         <select id="editBookingStatus" className="input-field" value={selectedBooking.status} onChange={(e) => setSelectedBooking(prev => ({ ...prev, status: e.target.value }))}>
                           <option value="booked">Gebucht</option>
                           <option value="reserved">Reserviert</option>
+                          {/* Admin should be able to cancel too */}
+                          <option value="cancelled">Storniert</option>
                         </select>
                       </div>
                     </>
                   ) : (
-                    // Regular User View Fields
                     <>
                       <p className="mb-2"><strong>Benutzer:</strong> {selectedBooking.displayName}</p>
                       <p className="mb-2"><strong>Status:</strong> <span className={`font-semibold ${
                         selectedBooking.status === 'reserved' ? 'text-yellow-600' :
-                        selectedBooking.status === 'angefragt' ? 'text-amber-600' : // Tailwind Amber for 'angefragt'
-                        selectedBooking.status === 'cancelled' ? 'text-gray-500 line-through' : // Gray and strikethrough for 'cancelled'
-                        'text-red-700' // Default for 'booked'
+                        selectedBooking.status === 'angefragt' ? 'text-amber-600' :
+                        selectedBooking.status === 'cancelled' ? 'text-gray-500 line-through' :
+                        'text-red-700'
                         }`}>
                         {selectedBooking.status === 'reserved' ? 'Reserviert' :
                          selectedBooking.status === 'angefragt' ? 'Angefragt' :
@@ -1076,12 +1093,11 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                       <p className="mb-2"><strong>Start:</strong> {format(selectedBooking.start, 'dd.MM.yyyy')}</p>
                       <p className="mb-4"><strong>Ende:</strong> {format(selectedBooking.end, 'dd.MM.yyyy')}</p>
 
-                      {/* Overlap Response Section for non-admin users if it's their 'angefragt' booking or affects them */}
                       {relevantNotificationForModal && selectedBooking.status === 'angefragt' && selectedBooking.userId !== user.id && (
                         <div className="my-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md">
                           <p className="text-sm text-yellow-700">
                             Diese Buchung überschneidet sich mit Ihrer bestehenden Buchung.
-                            <strong> {relevantNotificationForModal.message} </strong> {/* Display full message from notification */}
+                            <strong> {relevantNotificationForModal.message} </strong>
                           </p>
                           <div className="mt-3 flex space-x-2">
                             <button
@@ -1106,7 +1122,6 @@ const handleMarkNotificationAsRead = async (notificationId) => {
                   )}
                 </>
               ) : (
-                // Delete Confirmation View
                 <>
                   <h3 className="text-2xl font-bold mb-4 text-gray-800">Löschen bestätigen</h3>
                   <p className="mb-6">Möchten Sie diese {selectedBooking.status === 'reserved' ? 'Reservierung' :
@@ -1116,7 +1131,6 @@ const handleMarkNotificationAsRead = async (notificationId) => {
               )}
             </div>
 
-            {/* Buttons section - sticky at the bottom */}
             <div className="mt-auto pt-4">
               {!showConfirmDelete ? (
                 <div className={`flex ${user && user.isAdmin ? 'justify-center' : 'justify-between items-center'} space-x-2`}>
