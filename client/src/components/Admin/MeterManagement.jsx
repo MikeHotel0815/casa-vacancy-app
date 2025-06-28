@@ -200,7 +200,7 @@ const MeterList = ({ meters, onSelectMeter, onEditMeter, onDeleteMeter, onAddNew
     <div className="flex justify-between items-center mb-4">
       <h3 className="text-xl font-semibold text-gray-700">Verfügbare Zähler</h3>
       <button onClick={onAddNewMeter} className="btn btn-primary">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 inline" viewBox="0 0 20 20" fill="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 inline" viewBox="0 0 20 20" fill="currentColor"> {/* Größe auf h-4 w-4 reduziert */}
           <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
         </svg>
         Neuer Zähler
@@ -393,7 +393,7 @@ const MeterManagement = ({ currentUser }) => {
             </div>
           ) : (
             <div className="p-10 bg-white rounded-lg shadow-md text-center text-gray-500 h-full flex flex-col justify-center items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"> {/* Größe auf h-12 w-12 reduziert */}
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
               </svg>
               <p className="text-lg">Bitte wählen Sie einen Zähler aus der Liste.</p>
