@@ -153,7 +153,7 @@ router.post('/:meterId/readings', authMiddleware, adminOnly, async (req, res) =>
       meterId: meterIdParam, // Fremdschlüssel
       value,
       date, // Sequelize DATEONLY akzeptiert 'YYYY-MM-DD'
-      photoUrl,
+      photoUrl: photoUrl || null, // Leeren String in null umwandeln
       notes,
       recordedByUserId: req.user.id, // Fremdschlüssel für den Erfasser
     });
