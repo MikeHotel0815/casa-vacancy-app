@@ -74,12 +74,8 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/meters - Alle Zähler abrufen (Admin only)
 router.get('/', authMiddleware, adminOnly, async (req, res) => {
   try {
-    // populate für Mongoose, um User-Details zu laden
-    const meters = await Meter.find().populate({
-        path: 'createdBy',
-        select: 'displayName email', // Sequelize User-Modell hat diese Felder
-        model: 'User' // Explizit das Modell angeben, da es gemischt ist
-    });
+    // populate für Mongoose entfernt, da createdBy nun ein String ist
+    const meters = await Meter.find();
     res.json(meters);
   } catch (error) {
     console.error('Error fetching meters:', error);
@@ -90,11 +86,8 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/meters/:id - Einen spezifischen Zähler abrufen (Admin only)
 router.get('/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const meter = await Meter.findById(req.params.id).populate({
-        path: 'createdBy',
-        select: 'displayName email',
-        model: 'User'
-    });
+    const meter = await Meter.findById(req.params.id);
+    // .populate({ path: 'createdBy', select: 'displayName email', model: 'User' }); // Entfernt
     if (!meter) {
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
     }
@@ -114,11 +107,8 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
       req.params.id,
       { name, unit, updatedAt: Date.now() },
       { new: true, runValidators: true } // new: true gibt das aktualisierte Dokument zurück
-    ).populate({
-        path: 'createdBy',
-        select: 'displayName email',
-        model: 'User'
-    });
+    );
+    // .populate({ path: 'createdBy', select: 'displayName email', model: 'User' }); // Entfernt
 
     if (!updatedMeter) {
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
@@ -181,10 +171,10 @@ router.post('/:meterId/readings', authMiddleware, adminOnly, async (req, res) =>
     });
 
     await newReading.save();
-    // Populate nach dem Speichern, um die referenzierten Daten zurückzugeben
+    // Populate für recordedBy entfernt, meter-Populate bleibt
     const populatedReading = await MeterReading.findById(newReading._id)
-        .populate({ path: 'meter', select: 'name unit' })
-        .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' });
+        .populate({ path: 'meter', select: 'name unit' });
+        // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }); // Entfernt
 
     res.status(201).json(populatedReading);
   } catch (error) {
@@ -207,7 +197,7 @@ router.get('/:meterId/readings', authMiddleware, adminOnly, async (req, res) => 
 
     const readings = await MeterReading.find({ meter: meterId })
       .populate({ path: 'meter', select: 'name unit' })
-      .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' })
+      // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }) // Entfernt
       .sort({ date: -1 });
     res.json(readings);
   } catch (error) {
@@ -221,8 +211,8 @@ router.get('/:meterId/readings', authMiddleware, adminOnly, async (req, res) => 
 router.get('/reading/:readingId', authMiddleware, adminOnly, async (req, res) => {
   try {
     const reading = await MeterReading.findById(req.params.readingId)
-      .populate({ path: 'meter', select: 'name unit' })
-      .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' });
+      .populate({ path: 'meter', select: 'name unit' });
+      // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }); // Entfernt
     if (!reading) {
       return res.status(404).json({ msg: 'Zählerstand nicht gefunden.' });
     }
@@ -250,8 +240,8 @@ router.put('/reading/:readingId', authMiddleware, adminOnly, async (req, res) =>
       req.params.readingId,
       updateData,
       { new: true, runValidators: true }
-    ).populate({ path: 'meter', select: 'name unit' })
-     .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' });
+    ).populate({ path: 'meter', select: 'name unit' });
+     // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }); // Entfernt
 
     if (!updatedReading) {
       return res.status(404).json({ msg: 'Zählerstand nicht gefunden.' });

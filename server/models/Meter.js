@@ -15,9 +15,9 @@ const meterSchema = new mongoose.Schema({
   // z.B. Standort, Typ (Strom, Wasser, Gas), etc.
   // Fürs Erste belassen wir es bei Name und Einheit.
   createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String, // Geändert von ObjectId zu String
     required: true,
+    // ref: 'User', // Entfernt, da User in Sequelize ist
   },
   createdAt: {
     type: Date,

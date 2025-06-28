@@ -24,9 +24,9 @@ const meterReadingSchema = new mongoose.Schema({
     trim: true,
   },
   recordedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String, // Geändert von ObjectId zu String
     required: true,
+    // ref: 'User', // Entfernt, da User in Sequelize ist
   },
   createdAt: {
     type: Date,
