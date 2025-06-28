@@ -3,30 +3,44 @@ import axios from 'axios'; // Wird für API-Aufrufe benötigt
 
 // Temporäre Platzhalter, werden später durch eigene Komponenten ersetzt
 const MeterReadingList = ({ meter, token }) => {
-    // Dummy-Daten und -Logik
     const [readings, setReadings] = useState([]);
     const [showReadingForm, setShowReadingForm] = useState(false);
-    const [editingReading, setEditingReading] = useState(null);
+    const [editingReading, setEditingReading] = useState(null); // Für das Bearbeiten/Erstellen Formular
 
-    const API_URL_READINGS = `${import.meta.env.VITE_API_URL}/api/meters/${meter._id}/readings`;
+    // Die API URL wird nun dynamisch im fetchReadings und handleReadingFormSubmit gebildet,
+    // da meter.id (vorher meter._id) sich ändern kann oder initial null ist.
 
     const fetchReadings = useCallback(async () => {
-        if (!meter._id) return;
+        if (!meter || !meter.id) { // Prüfung auf meter und meter.id
+            setReadings([]); // Reset readings if no valid meter
+            return;
+        }
         try {
-            const response = await axios.get(API_URL_READINGS, { headers: { Authorization: `Bearer ${token}` } });
+            const apiUrl = `${import.meta.env.VITE_API_URL}/api/meters/${meter.id}/readings`;
+            const response = await axios.get(apiUrl, { headers: { Authorization: `Bearer ${token}` } });
             setReadings(response.data);
         } catch (error) {
-            console.error(`Fehler beim Laden der Zählerstände für ${meter.name}:`, error);
-            // alert(error.response?.data?.msg || "Zählerstände konnten nicht geladen werden.");
+            console.error(`Fehler beim Laden der Zählerstände für ${meter.name || meter.id}:`, error);
+            setReadings([]); // Clear readings on error
         }
-    }, [API_URL_READINGS, meter._id, meter.name, token]);
+    }, [meter, token]);
 
     useEffect(() => {
-        fetchReadings();
-    }, [fetchReadings]);
+        // Fetch readings when the meter prop changes and is valid
+        if (meter && meter.id) {
+            fetchReadings();
+        } else {
+            setReadings([]); // Clear readings if no meter is selected
+        }
+    }, [meter, fetchReadings]); // fetchReadings ist nun eine Abhängigkeit
 
     const handleAddReading = () => {
-        setEditingReading({ meter: meter._id, date: new Date().toISOString().split('T')[0] }); // Default date to today
+        if (!meter || !meter.id) {
+            alert("Bitte wählen Sie zuerst einen Zähler aus.");
+            return;
+        }
+        // Wichtig: meterId für das neue Reading setzen
+        setEditingReading({ meterId: meter.id, date: new Date().toISOString().split('T')[0] });
         setShowReadingForm(true);
     };
 
@@ -46,40 +60,67 @@ const MeterReadingList = ({ meter, token }) => {
         }
     };
 
-    const handleReadingFormSubmit = async (readingData) => {
+    const handleReadingFormSubmit = async (readingDataFromForm) => {
+        // Ensure meterId is part of the data sent, especially for new readings
+        const readingPayload = { ...readingDataFromForm };
+        if (!readingPayload.meterId && meter && meter.id) { // meterId ist im Formular nicht explizit, also hier hinzufügen
+            readingPayload.meterId = meter.id;
+        }
+
+        // API URL für POST (neu erstellen)
+        let apiUrl = `${import.meta.env.VITE_API_URL}/api/meters/${readingPayload.meterId}/readings`;
+        let httpMethod = 'post';
+
+        if (readingPayload.id) { // Update, wenn eine ID vorhanden ist (vorher _id)
+            apiUrl = `${import.meta.env.VITE_API_URL}/api/meters/reading/${readingPayload.id}`;
+            httpMethod = 'put';
+        }
+
+        if (!readingPayload.meterId && httpMethod === 'post') {
+            alert("Fehler: Zähler-ID fehlt. Kann Zählerstand nicht erstellen.");
+            console.error("Submit Reading Error: meterId is missing for new reading.", readingPayload);
+            return;
+        }
+
         try {
-            if (readingData._id) { // Update
-                 await axios.put(`${import.meta.env.VITE_API_URL}/api/meters/reading/${readingData._id}`, readingData, { headers: { Authorization: `Bearer ${token}` } });
-            } else { // Create
-                 await axios.post(API_URL_READINGS, readingData, { headers: { Authorization: `Bearer ${token}` } });
+            if (httpMethod === 'put') {
+                 await axios.put(apiUrl, readingPayload, { headers: { Authorization: `Bearer ${token}` } });
+            } else {
+                 await axios.post(apiUrl, readingPayload, { headers: { Authorization: `Bearer ${token}` } });
             }
-            fetchReadings();
+            fetchReadings(); // Re-fetch readings for the current meter
             setShowReadingForm(false);
             setEditingReading(null);
         } catch (error) {
-             console.error("Fehler beim Speichern des Zählerstands:", error);
+             console.error("Fehler beim Speichern des Zählerstands:", error.response?.data || error.message, error);
              alert(error.response?.data?.msg || "Zählerstand konnte nicht gespeichert werden.");
         }
     };
 
+    // Wenn kein Meter ausgewählt ist, zeige nichts für die Zählerstände an.
+    if (!meter || !meter.id) {
+        return <div className="mt-6 p-4 text-sm text-gray-500">Bitte wählen Sie einen Zähler, um dessen Zählerstände anzuzeigen oder zu erfassen.</div>;
+    }
 
     if (showReadingForm && editingReading) {
+        // currentReading an MeterReadingForm übergeben, es enthält meterId für neue Readings
         return <MeterReadingForm currentReading={editingReading} onSubmit={handleReadingFormSubmit} onCancel={() => { setShowReadingForm(false); setEditingReading(null); }} meterUnit={meter.unit} />;
     }
 
     return (
         <div className="mt-6">
-            <h4 className="text-md font-semibold mb-2">Zählerstände</h4>
+            <h4 className="text-md font-semibold mb-2">Zählerstände für: {meter.name}</h4>
             <button onClick={handleAddReading} className="btn btn-success btn-sm mb-3">Neuen Zählerstand erfassen</button>
             {readings.length === 0 && <p className="text-sm text-gray-500">Keine Zählerstände für diesen Zähler erfasst.</p>}
             <ul className="space-y-2">
                 {readings.map(r => (
-                    <li key={r._id} className="text-sm p-2 border rounded bg-gray-50 flex justify-between items-center">
+                    // Verwende r.id statt r._id für den key und Operationen
+                    <li key={r.id} className="text-sm p-2 border rounded bg-gray-50 flex justify-between items-center">
                         <span>{new Date(r.date).toLocaleDateString('de-DE')}: <strong>{r.value} {meter.unit}</strong> {r.notes && `(${r.notes})`}</span>
                         <div>
                             {r.photoUrl && <a href={r.photoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 mr-2">Foto</a>}
                             <button onClick={() => handleEditReading(r)} className="btn-xs btn-secondary mr-1">Edit</button>
-                            <button onClick={() => handleDeleteReading(r._id)} className="btn-xs bg-red-500 hover:bg-red-600 text-white">Del</button>
+                            <button onClick={() => handleDeleteReading(r.id)} className="btn-xs bg-red-500 hover:bg-red-600 text-white">Del</button>
                         </div>
                     </li>
                 ))}
@@ -89,29 +130,46 @@ const MeterReadingList = ({ meter, token }) => {
 };
 
 const MeterReadingForm = ({ currentReading, onSubmit, onCancel, meterUnit }) => {
+    // Initialisiere State basierend auf currentReading, das jetzt auch meterId für neue Einträge enthält
     const [value, setValue] = useState(currentReading?.value || '');
-    const [date, setDate] = useState(currentReading?.date || new Date().toISOString().split('T')[0]);
+    // Stelle sicher, dass date ein String im Format YYYY-MM-DD ist, wenn es von currentReading kommt
+    const formatDateForInput = (dateStr) => {
+        if (!dateStr) return new Date().toISOString().split('T')[0];
+        // Wenn es bereits ein Date-Objekt ist (z.B. von new Date()), konvertiere es.
+        // Wenn es ein String ist, stelle sicher, dass es das richtige Format hat.
+        // Die API erwartet YYYY-MM-DD, also sollte es so bleiben.
+        return new Date(dateStr).toISOString().split('T')[0];
+    };
+    const [date, setDate] = useState(formatDateForInput(currentReading?.date));
     const [photoUrl, setPhotoUrl] = useState(currentReading?.photoUrl || '');
     const [notes, setNotes] = useState(currentReading?.notes || '');
 
     useEffect(() => {
         setValue(currentReading?.value || '');
-        setDate(currentReading?.date || new Date().toISOString().split('T')[0]);
+        setDate(formatDateForInput(currentReading?.date));
         setPhotoUrl(currentReading?.photoUrl || '');
         setNotes(currentReading?.notes || '');
     }, [currentReading]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit({ ...currentReading, value: parseFloat(value), date, photoUrl, notes });
+        // Übergebe das vollständige currentReading Objekt, das meterId und ggf. id (für Update) enthält
+        onSubmit({
+            ...currentReading, // Beinhaltet id (für Update) und meterId (für neu)
+            value: parseFloat(value),
+            date, // Ist bereits YYYY-MM-DD String
+            photoUrl,
+            notes
+        });
     };
 
     return (
          <form onSubmit={handleSubmit} className="p-4 bg-gray-100 rounded shadow my-4 border">
-            <h4 className="text-md font-semibold mb-3">{currentReading?._id ? 'Zählerstand bearbeiten' : 'Neuen Zählerstand erfassen'}</h4>
+            {/* Verwende currentReading.id statt currentReading._id für die Titelanzeige */}
+            <h4 className="text-md font-semibold mb-3">{currentReading?.id ? 'Zählerstand bearbeiten' : 'Neuen Zählerstand erfassen'}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label htmlFor="readingValue" className="block text-sm font-medium text-gray-700">Zählerstand ({meterUnit}):</label>
+                    <label htmlFor="readingValue" className="block text-sm font-medium text-gray-700">Zählerstand ({meterUnit || 'Einheit'}):</label>
                     <input type="number" step="any" id="readingValue" value={value} onChange={(e) => setValue(e.target.value)} required className="input-field" />
                 </div>
                 <div>
@@ -152,20 +210,20 @@ const MeterList = ({ meters, onSelectMeter, onEditMeter, onDeleteMeter, onAddNew
     <ul className="space-y-2">
       {meters.map(meter => (
         <li
-          key={meter._id}
+          key={meter.id} // Geändert von meter._id zu meter.id
           className={`p-3 border rounded-md hover:shadow-lg transition-shadow cursor-pointer flex justify-between items-center group
-                      ${selectedMeterId === meter._id ? 'bg-primary-light border-primary ring-2 ring-primary' : 'bg-gray-50 hover:bg-gray-100 border-gray-200'}`}
+                      ${selectedMeterId === meter.id ? 'bg-primary-light border-primary ring-2 ring-primary' : 'bg-gray-50 hover:bg-gray-100 border-gray-200'}`}
           onClick={() => onSelectMeter(meter)}
         >
           <div>
-            <span className={`font-medium ${selectedMeterId === meter._id ? 'text-primary-text-strong' : 'text-gray-800'}`}>{meter.name}</span>
-            <span className={`text-sm ml-2 ${selectedMeterId === meter._id ? 'text-primary-text' : 'text-gray-500'}`}>({meter.unit})</span>
+            <span className={`font-medium ${selectedMeterId === meter.id ? 'text-primary-text-strong' : 'text-gray-800'}`}>{meter.name}</span>
+            <span className={`text-sm ml-2 ${selectedMeterId === meter.id ? 'text-primary-text' : 'text-gray-500'}`}>({meter.unit})</span>
           </div>
           <div className="opacity-0 group-hover:opacity-100 transition-opacity space-x-1">
             <button onClick={(e) => { e.stopPropagation(); onEditMeter(meter); }} className="btn-icon btn-secondary">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDeleteMeter(meter._id); }} className="btn-icon bg-red-500 hover:bg-red-600 text-white">
+            <button onClick={(e) => { e.stopPropagation(); onDeleteMeter(meter.id); }} className="btn-icon bg-red-500 hover:bg-red-600 text-white"> {/* Geändert von meter._id zu meter.id */}
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </button>
           </div>
@@ -177,14 +235,15 @@ const MeterList = ({ meters, onSelectMeter, onEditMeter, onDeleteMeter, onAddNew
 
 // MeterForm Komponente
 const MeterForm = ({ currentMeter, onSubmit, onCancel }) => {
-  const [name, setName] = useState(currentMeter?.name || '');
-  const [unit, setUnit] = useState(currentMeter?.unit || '');
-  const [id, setId] = useState(currentMeter?._id || null);
+  const [name, setName] = useState('');
+  const [unit, setUnit] = useState('');
+  const [id, setId] = useState(null); // Explizit null für neue Zähler
 
   useEffect(() => {
+    // currentMeter kann initial {} sein für neue Zähler, oder ein existierender Zähler
     setName(currentMeter?.name || '');
     setUnit(currentMeter?.unit || '');
-    setId(currentMeter?._id || null);
+    setId(currentMeter?.id || null); // Verwende currentMeter.id
   }, [currentMeter]);
 
   const handleSubmit = (e) => {
@@ -193,12 +252,14 @@ const MeterForm = ({ currentMeter, onSubmit, onCancel }) => {
         alert("Name und Einheit dürfen nicht leer sein.");
         return;
     }
-    onSubmit({ _id: id, name, unit });
+    // Stelle sicher, dass 'id' (nicht '_id') übergeben wird
+    onSubmit({ id: id, name, unit });
   };
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
         <form onSubmit={handleSubmit} className="p-6 bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
+            {/* Verwende id (nicht _id) für die Titelanzeige */}
             <h3 className="text-xl font-semibold mb-6 text-gray-700">{id ? 'Zähler bearbeiten' : 'Neuen Zähler erstellen'}</h3>
             <div className="mb-4">
                 <label htmlFor="meterName" className="block text-sm font-medium text-gray-700 mb-1">Name des Zählers:</label>
@@ -259,32 +320,36 @@ const MeterManagement = ({ currentUser }) => {
 
   const handleMeterFormSubmit = async (meterData) => {
     try {
-      if (meterData._id) {
-        await axios.put(`${API_URL}/${meterData._id}`, meterData, { headers: { Authorization: `Bearer ${token}` } });
+      // meterData.id wird vom MeterForm übergeben (kann null sein für neue Zähler)
+      if (meterData.id) {
+        await axios.put(`${API_URL}/${meterData.id}`, meterData, { headers: { Authorization: `Bearer ${token}` } });
       } else {
-        await axios.post(API_URL, meterData, { headers: { Authorization: `Bearer ${token}` } });
+        // Entferne die 'id'-Eigenschaft, wenn sie null ist, bevor sie an das Backend gesendet wird für POST
+        const { id, ...newMeterData } = meterData;
+        await axios.post(API_URL, newMeterData, { headers: { Authorization: `Bearer ${token}` } });
       }
       fetchMeters();
       setShowMeterFormModal(false);
       setEditingMeter(null);
     } catch (error) {
-      console.error("Fehler beim Speichern des Zählers:", error);
+      console.error("Fehler beim Speichern des Zählers:", error.response?.data || error.message, error);
       alert(error.response?.data?.msg || "Zähler konnte nicht gespeichert werden.");
     }
   };
 
-  const handleDeleteMeter = async (meterId) => {
+  const handleDeleteMeter = async (meterId) => { // meterId ist hier die korrekte ID (Zahl)
     if (window.confirm("Möchten Sie diesen Zähler und alle zugehörigen Zählerstände wirklich löschen? Das kann nicht rückgängig gemacht werden.")) {
       try {
         await axios.delete(`${API_URL}/${meterId}`, { headers: { Authorization: `Bearer ${token}` } });
         fetchMeters();
-        if (selectedMeter?._id === meterId) setSelectedMeter(null);
-        if (editingMeter?._id === meterId) { // Falls der gelöschte Zähler gerade bearbeitet wurde
+        // Verwende .id für Vergleiche
+        if (selectedMeter?.id === meterId) setSelectedMeter(null);
+        if (editingMeter?.id === meterId) {
             setShowMeterFormModal(false);
             setEditingMeter(null);
         }
       } catch (error) {
-        console.error("Fehler beim Löschen des Zählers:", error);
+        console.error("Fehler beim Löschen des Zählers:", error.response?.data || error.message, error);
         alert(error.response?.data?.msg || "Zähler konnte nicht gelöscht werden.");
       }
     }
@@ -315,14 +380,15 @@ const MeterManagement = ({ currentUser }) => {
             onEditMeter={handleEditMeter}
             onDeleteMeter={handleDeleteMeter}
             onAddNewMeter={handleAddNewMeter}
-            selectedMeterId={selectedMeter?._id}
+            selectedMeterId={selectedMeter?.id}
           />
         </div>
         <div className="lg:col-span-2">
           {selectedMeter ? (
             <div className="p-6 bg-white rounded-lg shadow-md">
               <h3 className="text-2xl font-semibold mb-2 text-gray-700">Details für: {selectedMeter.name}</h3>
-              <p className="text-sm text-gray-500 mb-6">Einheit: {selectedMeter.unit} | ID: {selectedMeter._id}</p>
+              {/* Verwende selectedMeter.id für die Anzeige */}
+              <p className="text-sm text-gray-500 mb-6">Einheit: {selectedMeter.unit} | ID: {selectedMeter.id}</p>
               <MeterReadingList meter={selectedMeter} token={token} />
             </div>
           ) : (
