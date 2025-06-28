@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { Booking, Meter, MeterReading, User } = require('../models'); // Sequelize Modelle
+const Booking = require('../models/Booking');
+const Meter = require('../models/Meter');
+const MeterReading = require('../models/MeterReading');
+const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
 const { Op, Sequelize, fn, col, literal } = require('sequelize'); // Sequelize für komplexere Queries
 

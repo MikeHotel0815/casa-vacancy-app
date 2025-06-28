@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { Meter, MeterReading, User } = require('../models'); // Importiere Sequelize Modelle
+const Meter = require('../models/Meter');
+const MeterReading = require('../models/MeterReading');
+const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
 const { Op } = require('sequelize');
 
