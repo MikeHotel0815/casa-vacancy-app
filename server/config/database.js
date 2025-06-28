@@ -1,6 +1,5 @@
 // Importiert das Sequelize-Paket
 const { Sequelize } = require('sequelize');
-const mongoose = require('mongoose');
 
 // Lädt die Umgebungsvariablen aus der .env-Datei
 require('dotenv').config();
@@ -29,21 +28,6 @@ const connectDB = async () => {
   }
 };
 
-// --- Mongoose Konfiguration ---
-const connectMongoose = async () => {
-  try {
-    if (!process.env.DATABASE_URL_MONGOOSE) {
-      console.error('DATABASE_URL_MONGOOSE ist nicht in .env definiert!');
-      process.exit(1); // Beendet den Prozess, da die DB-Verbindung kritisch ist
-    }
-    await mongoose.connect(process.env.DATABASE_URL_MONGOOSE);
-    console.log('Verbindung zur MongoDB (Mongoose) wurde erfolgreich hergestellt.');
-  } catch (error) {
-    console.error('Verbindung zur MongoDB (Mongoose) konnte nicht hergestellt werden:', error);
-    process.exit(1); // Beendet den Prozess bei einem kritischen Fehler
-  }
-};
-
 // Exportiert die Sequelize-Instanz und die Testfunktion, 
 // damit sie in anderen Teilen der Anwendung (z.B. in index.js und den Models) verwendet werden können.
-module.exports = { sequelize, connectDB, connectMongoose };
+module.exports = { sequelize, connectDB };

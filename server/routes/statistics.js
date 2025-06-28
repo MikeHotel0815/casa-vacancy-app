@@ -1,28 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const Booking = require('../models/Booking');
+const { Booking, Meter, MeterReading, User } = require('../models'); // Sequelize Modelle
 const authMiddleware = require('../middleware/authMiddleware');
-const { Op, Sequelize } = require('sequelize'); // Sequelize für komplexere Queries
-const User = require('../models/User'); // Für den Admin-Check
-const Meter = require('../models/Meter'); // Mongoose Model
-const MeterReading = require('../models/MeterReading'); // Mongoose Model
-const mongoose = require('mongoose'); // Für ObjectId Validierung
+const { Op, Sequelize, fn, col, literal } = require('sequelize'); // Sequelize für komplexere Queries
 
-// Admin-Check Middleware (kopiert und angepasst von meters.js)
+// Admin-Check Middleware
 const adminOnly = async (req, res, next) => {
   try {
     let user = req.user;
     if (!user || !user.id) {
       return res.status(401).json({ msg: 'Authentifizierung erforderlich.' });
     }
-    // Überprüfen, ob der User direkt aus dem authMiddleware als Admin markiert ist
-    if (user.isAdmin === true) { // Expliziter Check auf true
+    if (user.isAdmin === true) {
         return next();
     }
-    // Fallback: User-Objekt aus DB laden, falls isAdmin nicht eindeutig true ist
     const userFromDb = await User.findByPk(user.id);
-    if (userFromDb && userFromDb.isAdmin === true) { // Expliziter Check auf true
-      req.user.isAdmin = true; // req.user für nachfolgende Checks anreichern
+    if (userFromDb && userFromDb.isAdmin) {
+      req.user.isAdmin = true;
       return next();
     }
     return res.status(403).json({ msg: 'Zugriff verweigert. Nur für Administratoren.' });
@@ -33,6 +27,8 @@ const adminOnly = async (req, res, next) => {
 };
 
 // GET /api/statistics/layout/:year - Hausauslegung für ein bestimmtes Jahr (Admin only)
+// Diese Route bleibt im Wesentlichen gleich, da Booking bereits ein Sequelize-Modell ist.
+// Lediglich die Datumsbehandlung wird hier auf UTC für Konsistenz geprüft/angepasst.
 router.get('/layout/:year', authMiddleware, adminOnly, async (req, res) => {
   try {
     const year = parseInt(req.params.year, 10);
@@ -40,56 +36,43 @@ router.get('/layout/:year', authMiddleware, adminOnly, async (req, res) => {
       return res.status(400).json({ msg: 'Ungültiges Jahr angegeben.' });
     }
 
-    const startDateOfYear = new Date(Date.UTC(year, 0, 1)); // 1. Januar des Jahres, UTC
-    const endDateOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999)); // 31. Dezember des Jahres, UTC
+    const startDateOfYearStr = `${year}-01-01`;
+    const endDateOfYearStr = `${year}-12-31`;
 
     const relevantBookings = await Booking.findAll({
       where: {
         status: { [Op.in]: ['booked', 'reserved'] },
-        // Filter für Buchungen, die das angegebene Jahr überschneiden
-        // startDate ist VOR oder GLEICH dem Ende des Jahres UND endDate ist NACH oder GLEICH dem Anfang des Jahres
-        startDate: { [Op.lte]: endDateOfYear.toISOString().split('T')[0] },
-        endDate: { [Op.gte]: startDateOfYear.toISOString().split('T')[0] },
+        startDate: { [Op.lte]: endDateOfYearStr },
+        endDate: { [Op.gte]: startDateOfYearStr },
       },
-      attributes: ['startDate', 'endDate', 'status'],
+      attributes: ['startDate', 'endDate'], // Status wird nicht mehr für die Berechnung benötigt
       order: [['startDate', 'ASC']],
     });
 
     const monthlyData = Array(12).fill(null).map((_, index) => ({
-        month: index, // Monat (0-11, für Date-Objekt)
+        month: index, // 0-11
         bookedDays: 0,
-        totalDaysInMonth: new Date(Date.UTC(year, index + 1, 0)).getUTCDate()
+        totalDaysInMonth: new Date(Date.UTC(year, index + 1, 0)).getUTCDate() // Tage im Monat in UTC
     }));
 
     relevantBookings.forEach(booking => {
-      // Wichtig: Booking.startDate und Booking.endDate sind Strings im Format 'YYYY-MM-DD'
-      // Sie müssen korrekt in Date-Objekte (UTC) umgewandelt werden für Vergleiche
-      const bookingStartParts = booking.startDate.split('-').map(Number);
-      const bookingEndParts = booking.endDate.split('-').map(Number);
-
-      // JavaScript Date Monate sind 0-indexed, also Monat - 1
-      const bookingStart = new Date(Date.UTC(bookingStartParts[0], bookingStartParts[1] - 1, bookingStartParts[2]));
-      const bookingEnd = new Date(Date.UTC(bookingEndParts[0], bookingEndParts[1] - 1, bookingEndParts[2]));
-
+      const bookingStart = new Date(booking.startDate); // Ist DATEONLY, wird als Mitternacht UTC interpretiert
+      const bookingEnd = new Date(booking.endDate);     // Ist DATEONLY, wird als Mitternacht UTC interpretiert
 
       for (let m = 0; m < 12; m++) { // m ist der Monat (0-11)
         const currentMonthStart = new Date(Date.UTC(year, m, 1));
-        const currentMonthEnd = new Date(Date.UTC(year, m, monthlyData[m].totalDaysInMonth));
+        const currentMonthEnd = new Date(Date.UTC(year, m, monthlyData[m].totalDaysInMonth, 23, 59, 59, 999)); // Ende des Tages UTC
 
-        // Bestimme den tatsächlichen Start und das Ende der Buchung innerhalb des aktuellen Jahres und Monats
         const effectiveBookingStartInPeriod = new Date(Math.max(bookingStart.getTime(), currentMonthStart.getTime()));
-        const effectiveBookingEndInPeriod = new Date(Math.min(bookingEnd.getTime(), currentMonthEnd.getTime()));
+        // Für das Ende der Buchung +1 Tag addieren, da endDate inklusiv ist für die Tageszählung
+        const effectiveBookingEndInPeriod = new Date(Math.min(new Date(bookingEnd.getTime() + 24*60*60*1000).getTime(), currentMonthEnd.getTime()));
 
-        if (effectiveBookingStartInPeriod <= effectiveBookingEndInPeriod) {
-          // Iteriere über die Tage der Buchung, die in diesem Monat liegen
+
+        if (effectiveBookingStartInPeriod < effectiveBookingEndInPeriod) { // Strikter Vergleich <, da wir Tage zählen
           let dayIterator = new Date(effectiveBookingStartInPeriod);
-          while(dayIterator <= effectiveBookingEndInPeriod) {
-            if (dayIterator.getUTCFullYear() === year && dayIterator.getUTCMonth() === m) {
-                 // Nur Tage zählen, die tatsächlich im aktuellen Jahr und Monat liegen
-                 // (Sicherheitscheck, sollte durch Logik oben abgedeckt sein)
-                monthlyData[m].bookedDays += 1;
-            }
-            dayIterator.setUTCDate(dayIterator.getUTCDate() + 1);
+          while(dayIterator < effectiveBookingEndInPeriod && dayIterator.getUTCFullYear() === year && dayIterator.getUTCMonth() === m) {
+             monthlyData[m].bookedDays += 1;
+             dayIterator.setUTCDate(dayIterator.getUTCDate() + 1);
           }
         }
       }
@@ -97,14 +80,13 @@ router.get('/layout/:year', authMiddleware, adminOnly, async (req, res) => {
 
     const layoutStatistics = monthlyData.map(monthStats => ({
       year: year,
-      month: monthStats.month + 1, // Monat zurück auf 1-12 für die Ausgabe
+      month: monthStats.month + 1,
       bookedDays: monthStats.bookedDays,
       totalDaysInMonth: monthStats.totalDaysInMonth,
       occupancyRate: monthStats.totalDaysInMonth > 0 ? parseFloat(((monthStats.bookedDays / monthStats.totalDaysInMonth) * 100).toFixed(2)) : 0,
     }));
 
     res.json(layoutStatistics);
-
   } catch (error) {
     console.error(`Error fetching layout statistics for year ${req.params.year}:`, error);
     res.status(500).json({ error: 'Serverfehler beim Abrufen der Auslegungsstatistik.' });
@@ -116,41 +98,51 @@ router.get('/consumption/:meterId/:year', authMiddleware, adminOnly, async (req,
   try {
     const { meterId, year: yearParam } = req.params;
     const year = parseInt(yearParam, 10);
+    const meterIdInt = parseInt(meterId, 10);
 
-    if (!meterId || !mongoose.Types.ObjectId.isValid(meterId)) {
-        return res.status(400).json({ msg: 'Gültige Zähler-ID ist erforderlich.' });
+
+    if (isNaN(meterIdInt) || meterIdInt <= 0) {
+        return res.status(400).json({ msg: 'Gültige numerische Zähler-ID ist erforderlich.' });
     }
     if (isNaN(year) || year < 2000 || year > 2100) {
       return res.status(400).json({ msg: 'Ungültiges Jahr angegeben.' });
     }
 
-    const meter = await Meter.findById(meterId);
+    const meter = await Meter.findByPk(meterIdInt);
     if (!meter) {
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
     }
 
-    // Daten für den Zeitraum von Anfang Vorjahr bis Ende Folgejahr holen, um Randmonate abzudecken
-    const veryStartDate = new Date(Date.UTC(year - 1, 0, 1));
-    const veryEndDate = new Date(Date.UTC(year + 1, 11, 31, 23, 59, 59, 999));
+    // Sequelize DATEONLY speichert als 'YYYY-MM-DD'.
+    // Für Vergleiche mit Op.gte/lte ist es am sichersten, Strings in diesem Format zu verwenden.
+    const veryStartDateStr = `${year - 1}-01-01`;
+    const veryEndDateStr = `${year + 1}-12-31`;
 
-    const readings = await MeterReading.find({
-      meter: meterId,
-      date: { $gte: veryStartDate, $lte: veryEndDate },
-    }).sort({ date: 'asc' });
+    const readings = await MeterReading.findAll({
+      where: {
+        meterId: meterIdInt,
+        date: { // Datumsvergleich für DATEONLY
+          [Op.gte]: veryStartDateStr,
+          [Op.lte]: veryEndDateStr,
+        },
+      },
+      order: [['date', 'ASC']], // Wichtig für die Differenzbildung
+    });
 
     const monthlyConsumption = Array(12).fill(null).map((_, index) => ({
-        month: index + 1,
+        month: index + 1, // 1-12
         year: year,
         consumption: 0,
         estimated: false,
-        daysWithReadings: 0, // Tage im Monat, für die es eine Ableseperiode gab
+        daysWithReadings: 0,
         totalDaysInMonth: new Date(Date.UTC(year, index + 1, 0)).getUTCDate()
     }));
 
     if (readings.length < 2) {
-      monthlyConsumption.forEach(mc => mc.estimated = true); // Alle Monate als geschätzt markieren
+      monthlyConsumption.forEach(mc => mc.estimated = true);
       const message = readings.length < 1 ? 'Keine Zählerstände für diesen Zähler vorhanden.' : 'Nicht genügend Zählerstände (<2) im Zeitraum für eine Verbrauchsberechnung.';
       return res.json({
+        meterId: meter.id,
         meterName: meter.name,
         unit: meter.unit,
         year: year,
@@ -163,32 +155,34 @@ router.get('/consumption/:meterId/:year', authMiddleware, adminOnly, async (req,
       const startReading = readings[i];
       const endReading = readings[i+1];
 
-      const startDate = new Date(startReading.date); // Ist bereits ein Date-Objekt von Mongoose
-      const endDate = new Date(endReading.date);   // Ist bereits ein Date-Objekt von Mongoose
+      // 'date' ist ein String 'YYYY-MM-DD' von Sequelize DATEONLY
+      const startDate = new Date(startReading.date + 'T00:00:00Z'); // Als UTC interpretieren
+      const endDate = new Date(endReading.date + 'T00:00:00Z');   // Als UTC interpretieren
 
       if (startDate.getTime() >= endDate.getTime()) continue;
 
       const valueDiff = endReading.value - startReading.value;
-      // Ein negativer Verbrauch kann z.B. bei Zählerwechsel oder Rückspeisung (Photovoltaik) auftreten.
-      // Für eine einfache Verbrauchsstatistik behandeln wir das als 0 oder überspringen es.
-      // Hier wird es als 0 behandelt, um die Tage trotzdem zu zählen.
       const consumptionInPeriod = Math.max(0, valueDiff);
 
-      const totalDaysInReadingPeriod = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      // Differenz in Millisekunden, dann in Tage umrechnen
+      const totalMsInReadingPeriod = endDate.getTime() - startDate.getTime();
+      const totalDaysInReadingPeriod = totalMsInReadingPeriod / (1000 * 60 * 60 * 24);
+
       if (totalDaysInReadingPeriod === 0) continue;
 
       const averageDailyConsumption = consumptionInPeriod / totalDaysInReadingPeriod;
 
-      let currentIterDate = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+      let currentIterDate = new Date(startDate); // Start der Iteration
 
-      while(currentIterDate < endDate) {
+      while(currentIterDate.getTime() < endDate.getTime()) { // Iteriere bis zum Tag vor endDate
         const iterYear = currentIterDate.getUTCFullYear();
         const iterMonth = currentIterDate.getUTCMonth(); // 0-11
 
         if (iterYear === year) {
-          // Berechne, welcher Anteil des Tages in die Ableseperiode UND den aktuellen Iterationstag fällt
           const dayStartTime = currentIterDate.getTime();
-          const dayEndTime = new Date(Date.UTC(iterYear, iterMonth, currentIterDate.getUTCDate() + 1)).getTime();
+          const nextDayDate = new Date(currentIterDate);
+          nextDayDate.setUTCDate(nextDayDate.getUTCDate() + 1);
+          const dayEndTime = nextDayDate.getTime();
 
           const effectiveIntervalStart = Math.max(dayStartTime, startDate.getTime());
           const effectiveIntervalEnd = Math.min(dayEndTime, endDate.getTime());
@@ -202,24 +196,20 @@ router.get('/consumption/:meterId/:year', authMiddleware, adminOnly, async (req,
           }
         }
         currentIterDate.setUTCDate(currentIterDate.getUTCDate() + 1);
-        if (currentIterDate.getUTCFullYear() > year + 1) break; // Sicherheitsbreak
+        if (currentIterDate.getUTCFullYear() > year + 1 && currentIterDate.getUTCMonth() > 0) break;
       }
     }
 
     monthlyConsumption.forEach(mc => {
         mc.consumption = parseFloat(mc.consumption.toFixed(3));
-        // Wenn für weniger als die Hälfte der Tage im Monat Daten vorliegen, markiere als geschätzt
-        // Oder wenn es überhaupt keine Tage mit Readings gab.
         if (mc.daysWithReadings < (mc.totalDaysInMonth / 2) || mc.daysWithReadings === 0) {
-             // Verfeinerung: Wenn es gar keine Readings im Jahr gab, wurde das oben abgefangen.
-             // Diese Schätzung ist für Monate innerhalb eines Jahres mit spärlichen Daten.
             if (readings.length >=2 ) mc.estimated = true;
         }
-         mc.daysWithReadings = parseFloat(mc.daysWithReadings.toFixed(2));
+         mc.daysWithReadings = parseFloat(mc.daysWithReadings.toFixed(1));
     });
 
     res.json({
-      meterId: meter._id,
+      meterId: meter.id,
       meterName: meter.name,
       unit: meter.unit,
       year: year,
@@ -231,6 +221,5 @@ router.get('/consumption/:meterId/:year', authMiddleware, adminOnly, async (req,
     res.status(500).json({ error: 'Serverfehler beim Abrufen der Verbrauchsstatistik.' });
   }
 });
-
 
 module.exports = router;

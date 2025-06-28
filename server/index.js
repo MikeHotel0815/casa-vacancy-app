@@ -6,7 +6,7 @@ const express = require('express');
 const cors = require('cors');
 
 // Importiert unsere eigenen Module
-const { sequelize, connectDB, connectMongoose } = require('./config/database'); // connectMongoose hinzugefügt
+const { sequelize, connectDB } = require('./config/database'); // connectMongoose entfernt
 const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/bookings');
 const holidayRoutes = require('./routes/holidays');
@@ -46,8 +46,7 @@ const startServer = async () => {
   try {
     // 1. Verbindung zur Sequelize-Datenbank testen
     await connectDB();
-    // 1b. Verbindung zur MongoDB (Mongoose) herstellen
-    await connectMongoose();
+    // Mongoose-Verbindung entfernt
     
     // 2. Sequelize-Modelle mit der Datenbank synchronisieren.
     // {alter: true} versucht, die Tabellen an die Modelle anzupassen, ohne Daten zu löschen (wenn möglich).

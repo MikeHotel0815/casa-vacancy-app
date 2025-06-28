@@ -1,44 +1,52 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
+const User = require('./User'); // Import User model for association
 
-const meterSchema = new mongoose.Schema({
+const Meter = sequelize.define('Meter', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
   name: {
-    type: String,
-    required: true,
-    trim: true,
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: {
+        msg: "Name darf nicht leer sein."
+      }
+    }
   },
   unit: {
-    type: String,
-    required: true,
-    trim: true,
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      notEmpty: {
+        msg: "Einheit darf nicht leer sein."
+      }
+    }
   },
-  // Weitere relevante Felder könnten hier hinzugefügt werden,
-  // z.B. Standort, Typ (Strom, Wasser, Gas), etc.
-  // Fürs Erste belassen wir es bei Name und Einheit.
-  createdBy: {
-    type: String, // Geändert von ObjectId zu String
-    required: true,
-    // ref: 'User', // Entfernt, da User in Sequelize ist
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+  // userId wird als Fremdschlüssel durch die Assoziation unten hinzugefügt.
+  // Es ist wichtig, dass die Assoziation korrekt definiert ist.
 });
 
-// Indizes
-meterSchema.index({ name: 1 });
-meterSchema.index({ createdBy: 1 });
-
-// Middleware, um updatedAt zu aktualisieren
-meterSchema.pre('save', function (next) {
-  this.updatedAt = Date.now();
-  next();
+// Assoziation: Ein Meter wurde von einem User erstellt
+// User (Ersteller) kann viele Meter haben
+User.hasMany(Meter, {
+  foreignKey: {
+    name: 'userId', // Dies erstellt eine Spalte 'userId' in der 'Meters'-Tabelle
+    allowNull: false,
+  },
+  as: 'createdMeters', // Alias, um auf die erstellten Zähler eines Users zuzugreifen
+});
+// Ein Meter gehört zu einem User (Ersteller)
+Meter.belongsTo(User, {
+  foreignKey: {
+    name: 'userId',
+    allowNull: false,
+  },
+  as: 'createdBy', // Alias, um auf den Ersteller eines Zählers zuzugreifen
 });
 
-const Meter = mongoose.model('Meter', meterSchema);
 
 module.exports = Meter;

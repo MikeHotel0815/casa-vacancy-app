@@ -1,39 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const Meter = require('../models/Meter');
-const MeterReading = require('../models/MeterReading');
+const { Meter, MeterReading, User } = require('../models'); // Importiere Sequelize Modelle
 const authMiddleware = require('../middleware/authMiddleware');
-const User = require('../models/User'); // Wird für createdBy/recordedBy benötigt
+const { Op } = require('sequelize');
 
 // --- Helper Middleware für Admin Check ---
+// Diese Middleware bleibt im Prinzip gleich, da sie User.findByPk verwendet, was Sequelize ist.
 const adminOnly = async (req, res, next) => {
-  // Annahme: authMiddleware fügt das User-Objekt zu req.user hinzu
-  // und User-Objekt hat ein isAdmin Feld (Boolean).
-  // Die User.findById Logik hier ist nur ein Fallback, falls req.user nicht vollständig ist.
-  // Normalerweise sollte authMiddleware das korrekte User-Objekt mit isAdmin bereitstellen.
   try {
     let user = req.user;
-    // Wichtig: Sicherstellen, dass req.user und req.user.id existieren, bevor DB-Aufruf erfolgt
     if (!user || !user.id) {
-        // Wenn authMiddleware keinen User setzt oder keine ID hat, ist das ein Fehler.
-        // Oder es ist eine Route, die keinen User erfordert, aber dann sollte adminOnly nicht verwendet werden.
-        return res.status(401).json({ msg: 'Authentifizierung erforderlich.' });
+      return res.status(401).json({ msg: 'Authentifizierung erforderlich.' });
     }
-
-    if (user && typeof user.isAdmin !== 'undefined') {
-      if (user.isAdmin) {
+    if (user.isAdmin === true) { // Direkt aus dem Token, wenn authMiddleware es setzt
         return next();
-      }
     }
-
-    // Fallback: User-Objekt aus DB laden, falls isAdmin nicht in req.user ist.
-    // Dies ist Mongoose-Syntax, da User.js ein Mongoose-Modell ist.
-    // Das Projekt scheint Sequelize UND Mongoose zu mischen. User-Modell ist Sequelize.
-    // Das User-Modell wurde in /models/User.js als Sequelize-Modell definiert.
-    // Daher muss hier User.findByPk (Sequelize) anstelle von User.findById (Mongoose) verwendet werden.
-    const userFromDb = await User.findByPk(user.id); // Korrigiert für Sequelize
+    // Fallback: User-Objekt aus DB laden
+    const userFromDb = await User.findByPk(user.id);
     if (userFromDb && userFromDb.isAdmin) {
-      req.user.isAdmin = true; // Optional: req.user für nachfolgende Checks anreichern
+      req.user.isAdmin = true;
       return next();
     }
     return res.status(403).json({ msg: 'Zugriff verweigert. Nur für Administratoren.' });
@@ -43,29 +28,27 @@ const adminOnly = async (req, res, next) => {
   }
 };
 
-
 // === Zähler (Meters) Routen ===
 
 // POST /api/meters - Neuen Zähler erstellen (Admin only)
 router.post('/', authMiddleware, adminOnly, async (req, res) => {
   try {
     const { name, unit } = req.body;
-    if (!name || !unit) {
-      return res.status(400).json({ msg: 'Name und Einheit sind erforderlich.' });
-    }
-
-    const newMeter = new Meter({
+    // Validierung durch das Modell (allowNull: false, validate)
+    const newMeter = await Meter.create({
       name,
       unit,
-      createdBy: req.user.id, // Mongoose erwartet hier die ObjectId
+      userId: req.user.id, // Fremdschlüssel für den Ersteller
     });
-
-    await newMeter.save();
-    res.status(201).json(newMeter);
+    // Um den Ersteller direkt mitzusenden (optional, wenn das Frontend es braucht)
+    const meterWithCreator = await Meter.findByPk(newMeter.id, {
+        include: [{ model: User, as: 'createdBy', attributes: ['id', 'displayName', 'email'] }]
+    });
+    res.status(201).json(meterWithCreator);
   } catch (error) {
     console.error('Error creating meter:', error);
-    if (error.name === 'ValidationError') {
-        return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors });
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors.map(e => e.message) });
     }
     res.status(500).json({ error: 'Serverfehler beim Erstellen des Zählers.' });
   }
@@ -74,8 +57,10 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/meters - Alle Zähler abrufen (Admin only)
 router.get('/', authMiddleware, adminOnly, async (req, res) => {
   try {
-    // populate für Mongoose entfernt, da createdBy nun ein String ist
-    const meters = await Meter.find();
+    const meters = await Meter.findAll({
+      include: [{ model: User, as: 'createdBy', attributes: ['id', 'displayName', 'email'] }],
+      order: [['name', 'ASC']]
+    });
     res.json(meters);
   } catch (error) {
     console.error('Error fetching meters:', error);
@@ -86,8 +71,9 @@ router.get('/', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/meters/:id - Einen spezifischen Zähler abrufen (Admin only)
 router.get('/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const meter = await Meter.findById(req.params.id);
-    // .populate({ path: 'createdBy', select: 'displayName email', model: 'User' }); // Entfernt
+    const meter = await Meter.findByPk(req.params.id, {
+      include: [{ model: User, as: 'createdBy', attributes: ['id', 'displayName', 'email'] }]
+    });
     if (!meter) {
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
     }
@@ -102,40 +88,39 @@ router.get('/:id', authMiddleware, adminOnly, async (req, res) => {
 router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
     const { name, unit } = req.body;
-    // updatedAt wird durch Mongoose Middleware aktualisiert
-    const updatedMeter = await Meter.findByIdAndUpdate(
-      req.params.id,
-      { name, unit, updatedAt: Date.now() },
-      { new: true, runValidators: true } // new: true gibt das aktualisierte Dokument zurück
-    );
-    // .populate({ path: 'createdBy', select: 'displayName email', model: 'User' }); // Entfernt
+    const meter = await Meter.findByPk(req.params.id);
 
-    if (!updatedMeter) {
+    if (!meter) {
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
     }
-    res.json(updatedMeter);
+
+    meter.name = name || meter.name;
+    meter.unit = unit || meter.unit;
+    // userId (createdBy) sollte hier nicht geändert werden.
+
+    await meter.save();
+    const updatedMeterWithCreator = await Meter.findByPk(meter.id, {
+        include: [{ model: User, as: 'createdBy', attributes: ['id', 'displayName', 'email'] }]
+    });
+    res.json(updatedMeterWithCreator);
   } catch (error) {
     console.error('Error updating meter:', error);
-    if (error.name === 'ValidationError') {
-        return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors });
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors.map(e => e.message) });
     }
     res.status(500).json({ error: 'Serverfehler beim Aktualisieren des Zählers.' });
   }
 });
 
 // DELETE /api/meters/:id - Einen Zähler löschen (Admin only)
+// onDelete: 'CASCADE' in MeterReading (bezogen auf Meter) sollte Zählerstände automatisch löschen.
 router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const meter = await Meter.findById(req.params.id);
+    const meter = await Meter.findByPk(req.params.id);
     if (!meter) {
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
     }
-
-    // Lösche zuerst alle zugehörigen Zählerstände
-    await MeterReading.deleteMany({ meter: req.params.id });
-    // Dann den Zähler selbst löschen
-    await Meter.findByIdAndDelete(req.params.id);
-
+    await meter.destroy(); // Dies löst onDelete: CASCADE für MeterReadings aus
     res.json({ msg: 'Zähler und zugehörige Zählerstände erfolgreich gelöscht.' });
   } catch (error) {
     console.error('Error deleting meter:', error);
@@ -150,37 +135,40 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
 router.post('/:meterId/readings', authMiddleware, adminOnly, async (req, res) => {
   try {
     const { value, date, photoUrl, notes } = req.body;
-    const meterId = req.params.meterId;
+    const meterIdParam = req.params.meterId;
 
+    // Validierung der Eingaben (teilweise vom Modell abgedeckt)
     if (value === undefined || value === null || !date) {
       return res.status(400).json({ msg: 'Zählerstand (value) und Datum sind erforderlich.' });
     }
 
-    const meterExists = await Meter.findById(meterId);
+    const meterExists = await Meter.findByPk(meterIdParam);
     if (!meterExists) {
       return res.status(404).json({ msg: 'Zugehöriger Zähler nicht gefunden.' });
     }
 
-    const newReading = new MeterReading({
-      meter: meterId,
+    const newReading = await MeterReading.create({
+      meterId: meterIdParam, // Fremdschlüssel
       value,
-      date: new Date(date), // Stelle sicher, dass es als Datum gespeichert wird
+      date, // Sequelize DATEONLY akzeptiert 'YYYY-MM-DD'
       photoUrl,
       notes,
-      recordedBy: req.user.id,
+      recordedByUserId: req.user.id, // Fremdschlüssel für den Erfasser
     });
 
-    await newReading.save();
-    // Populate für recordedBy entfernt, meter-Populate bleibt
-    const populatedReading = await MeterReading.findById(newReading._id)
-        .populate({ path: 'meter', select: 'name unit' });
-        // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }); // Entfernt
+    // Den neu erstellten Zählerstand mit zugehörigen Daten zurückgeben
+    const readingWithDetails = await MeterReading.findByPk(newReading.id, {
+        include: [
+            { model: User, as: 'recordedBy', attributes: ['id', 'displayName', 'email'] },
+            { model: Meter, as: 'meter', attributes: ['id', 'name', 'unit'] } // Geändert zu 'meter' gemäß Alias
+        ]
+    });
 
-    res.status(201).json(populatedReading);
+    res.status(201).json(readingWithDetails);
   } catch (error) {
     console.error('Error creating meter reading:', error);
-    if (error.name === 'ValidationError') {
-        return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors });
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors.map(e => e.message) });
     }
     res.status(500).json({ error: 'Serverfehler beim Erfassen des Zählerstands.' });
   }
@@ -189,16 +177,23 @@ router.post('/:meterId/readings', authMiddleware, adminOnly, async (req, res) =>
 // GET /api/meters/:meterId/readings - Alle Zählerstände für einen Zähler abrufen (Admin only)
 router.get('/:meterId/readings', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const meterId = req.params.meterId;
-    const meterExists = await Meter.findById(meterId);
+    const meterIdParam = req.params.meterId;
+    const meterExists = await Meter.findByPk(meterIdParam);
     if (!meterExists) {
+      // Wichtig: Nicht 404 senden, wenn der Zähler existiert, aber keine Readings hat.
+      // Sende leeres Array, wenn Zähler existiert, aber keine Readings.
+      // Dieser Check ist eher, ob der Zähler selbst existiert.
       return res.status(404).json({ msg: 'Zähler nicht gefunden.' });
     }
 
-    const readings = await MeterReading.find({ meter: meterId })
-      .populate({ path: 'meter', select: 'name unit' })
-      // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }) // Entfernt
-      .sort({ date: -1 });
+    const readings = await MeterReading.findAll({
+      where: { meterId: meterIdParam },
+      include: [
+        { model: User, as: 'recordedBy', attributes: ['id', 'displayName', 'email'] },
+        // { model: Meter, as: 'meter', attributes: ['id', 'name', 'unit'] } // Meter-Details sind hier nicht unbedingt nötig, da nach meterId gefiltert wird
+      ],
+      order: [['date', 'DESC']],
+    });
     res.json(readings);
   } catch (error) {
     console.error('Error fetching meter readings:', error);
@@ -206,13 +201,15 @@ router.get('/:meterId/readings', authMiddleware, adminOnly, async (req, res) => 
   }
 });
 
-// GET /api/meters/readings/:readingId - Einen spezifischen Zählerstand abrufen (Admin only)
-// Angepasste Route, um Kollisionen zu vermeiden, z.B. /api/meters/reading/:readingId
+// GET /api/meters/reading/:readingId - Einen spezifischen Zählerstand abrufen (Admin only)
 router.get('/reading/:readingId', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const reading = await MeterReading.findById(req.params.readingId)
-      .populate({ path: 'meter', select: 'name unit' });
-      // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }); // Entfernt
+    const reading = await MeterReading.findByPk(req.params.readingId, {
+      include: [
+        { model: User, as: 'recordedBy', attributes: ['id', 'displayName', 'email'] },
+        { model: Meter, as: 'meter', attributes: ['id', 'name', 'unit'] }
+      ]
+    });
     if (!reading) {
       return res.status(404).json({ msg: 'Zählerstand nicht gefunden.' });
     }
@@ -228,29 +225,37 @@ router.get('/reading/:readingId', authMiddleware, adminOnly, async (req, res) =>
 router.put('/reading/:readingId', authMiddleware, adminOnly, async (req, res) => {
   try {
     const { value, date, photoUrl, notes } = req.body;
+    const reading = await MeterReading.findByPk(req.params.readingId);
 
-    const updateData = {};
-    if (value !== undefined) updateData.value = value;
-    if (date) updateData.date = new Date(date);
-    if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
-    if (notes !== undefined) updateData.notes = notes;
-    // recordedBy und meter sollten nicht änderbar sein.
-
-    const updatedReading = await MeterReading.findByIdAndUpdate(
-      req.params.readingId,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate({ path: 'meter', select: 'name unit' });
-     // .populate({ path: 'recordedBy', select: 'displayName email', model: 'User' }); // Entfernt
-
-    if (!updatedReading) {
+    if (!reading) {
       return res.status(404).json({ msg: 'Zählerstand nicht gefunden.' });
     }
-    res.json(updatedReading);
+
+    // Nur der Admin, der es erstellt hat, oder ein "Super-Admin" darf bearbeiten?
+    // Aktuell: Jeder Admin darf jeden Zählerstand bearbeiten.
+    // if (reading.recordedByUserId !== req.user.id && !req.user.isSuperAdmin) { // Annahme: isSuperAdmin existiert
+    //   return res.status(403).json({ msg: 'Keine Berechtigung diesen Zählerstand zu ändern.' });
+    // }
+
+    if (value !== undefined) reading.value = value;
+    if (date) reading.date = date; // Muss 'YYYY-MM-DD' sein
+    // Für photoUrl und notes: explizit null erlauben, um sie zu löschen
+    if (photoUrl !== undefined) reading.photoUrl = photoUrl === '' ? null : photoUrl;
+    if (notes !== undefined) reading.notes = notes === '' ? null : notes;
+    // meterId und recordedByUserId sollten hier nicht geändert werden.
+
+    await reading.save();
+    const updatedReadingWithDetails = await MeterReading.findByPk(reading.id, {
+        include: [
+            { model: User, as: 'recordedBy', attributes: ['id', 'displayName', 'email'] },
+            { model: Meter, as: 'meter', attributes: ['id', 'name', 'unit'] }
+        ]
+    });
+    res.json(updatedReadingWithDetails);
   } catch (error) {
     console.error('Error updating meter reading:', error);
-    if (error.name === 'ValidationError') {
-        return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors });
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ msg: "Validierungsfehler", errors: error.errors.map(e => e.message) });
     }
     res.status(500).json({ error: 'Serverfehler beim Aktualisieren des Zählerstands.' });
   }
@@ -259,16 +264,16 @@ router.put('/reading/:readingId', authMiddleware, adminOnly, async (req, res) =>
 // DELETE /api/meters/reading/:readingId - Einen Zählerstand löschen (Admin only)
 router.delete('/reading/:readingId', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const deletedReading = await MeterReading.findByIdAndDelete(req.params.readingId);
-    if (!deletedReading) {
+    const reading = await MeterReading.findByPk(req.params.readingId);
+    if (!reading) {
       return res.status(404).json({ msg: 'Zählerstand nicht gefunden.' });
     }
+    await reading.destroy();
     res.json({ msg: 'Zählerstand erfolgreich gelöscht.' });
   } catch (error) {
     console.error('Error deleting meter reading:', error);
     res.status(500).json({ error: 'Serverfehler beim Löschen des Zählerstands.' });
   }
 });
-
 
 module.exports = router;
