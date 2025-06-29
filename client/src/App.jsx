@@ -176,10 +176,12 @@ function App() {
     const publicHolidayTextColor = '#ffffff'; // Default White
     document.documentElement.style.setProperty('--public-holiday-text-color', publicHolidayTextColor);
 
-    const schoolHolidayColor = '#a8a29e'; // Default Stone-400
-    document.documentElement.style.setProperty('--school-holiday-color', schoolHolidayColor);
-    const schoolHolidayTextColor = '#1f2937'; // Default Gray-800 (for better contrast on lighter schoolHolidayColor)
-    document.documentElement.style.setProperty('--school-holiday-text-color', schoolHolidayTextColor);
+    // Load school holiday colors from localStorage and set CSS variables
+    const loadedSchoolHolidayColor = localStorage.getItem('schoolHolidayColor') || '#a8a29e';
+    document.documentElement.style.setProperty('--school-holiday-color', loadedSchoolHolidayColor);
+
+    const loadedSchoolHolidayTextColor = localStorage.getItem('schoolHolidayTextColor') || '#1f2937';
+    document.documentElement.style.setProperty('--school-holiday-text-color', loadedSchoolHolidayTextColor);
 
     const bookedColor = localStorage.getItem('bookedColor') || '#dc2626';
     document.documentElement.style.setProperty('--booked-color', bookedColor);
@@ -267,12 +269,14 @@ function App() {
 
         const allEvents = [...formattedBookings, ...formattedPublicHolidays, ...formattedSchoolHolidays];
 
-        // Sort events: public holidays first, then bookings, then school holidays
+        // Sort events: school holidays first, then public holidays, then bookings
+        // Public holidays are handled differently (not as bars), so their order here is
+        // less critical than ensuring school holidays come before bookings.
         allEvents.sort((a, b) => {
           const typeOrder = {
-            publicHoliday: 1,
-            booking: 2, // Assuming 'booking' is the type for bookings
-            schoolHoliday: 3,
+            schoolHoliday: 1, // School holidays come first
+            publicHoliday: 2, // Public holidays (if they were bars, which they are not)
+            booking: 3,       // Bookings come after school holidays
           };
 
           const orderA = typeOrder[a.type] || 99; // Default for unknown types
