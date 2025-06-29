@@ -176,9 +176,9 @@ function App() {
     const publicHolidayTextColor = '#ffffff'; // Default White
     document.documentElement.style.setProperty('--public-holiday-text-color', publicHolidayTextColor);
 
-    const schoolHolidayColor = '#FFD700'; // Gold (Yellow)
+    const schoolHolidayColor = '#a8a29e'; // Default Stone-400
     document.documentElement.style.setProperty('--school-holiday-color', schoolHolidayColor);
-    const schoolHolidayTextColor = '#1f2937'; // Gray-800 (Dark Gray/Off-Black)
+    const schoolHolidayTextColor = '#1f2937'; // Default Gray-800 (for better contrast on lighter schoolHolidayColor)
     document.documentElement.style.setProperty('--school-holiday-text-color', schoolHolidayTextColor);
 
     const bookedColor = localStorage.getItem('bookedColor') || '#dc2626';
@@ -700,12 +700,8 @@ const handleMarkNotificationAsRead = async (notificationId) => {
         const publicHolidayBgColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
         // Apply with some transparency to differentiate from event block
         style.backgroundColor = hexToRgba(publicHolidayBgColor, 0.3);
-    } else if (isSchoolHoliday) {
-        // Explicitly do nothing here to ensure school holidays do not get a day cell background
-        // from this holiday-specific logic path.
-        // The event bar itself is styled by eventStyleGetter.
-        // If a school holiday day is part of a selection, it gets a boxShadow below.
     }
+    // Removed the 'else if (isSchoolHoliday)' block to prevent school holiday day background coloring.
     // School holiday event blocks will still be colored by eventStyleGetter.
 
     // Apply selection styling - this will override holiday background if a day is selected
@@ -846,13 +842,10 @@ const handleMarkNotificationAsRead = async (notificationId) => {
         style.opacity = 0.9;
         break;
       case 'schoolHoliday':
-        // Ensure we use the updated CSS variables for yellow background and dark text
-        style.backgroundColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#FFD700'; // Fallback to Gold
-        style.color = docStyle.getPropertyValue('--school-holiday-text-color').trim() || '#1f2937';   // Fallback to Dark Gray
-        // Adjust border to complement the yellow background. A slightly darker yellow or the same yellow could work.
-        // Using the main holiday color with some transparency for the border is a consistent approach.
-        style.border = `1px solid ${hexToRgba(docStyle.getPropertyValue('--school-holiday-color').trim() || '#FFD700', 0.7)}`;
-        style.opacity = 0.85; // Keep opacity as it was
+        style.backgroundColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e';
+        style.color = docStyle.getPropertyValue('--school-holiday-text-color').trim() || '#1f2937'; // Default dark text
+        style.border = `1px solid ${hexToRgba(docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e', 0.5)}`;
+        style.opacity = 0.85;
         break;
       default:
         style.backgroundColor = '#64748b'; // Slate as a fallback

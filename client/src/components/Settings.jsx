@@ -18,7 +18,7 @@ const Settings = ({ user, onUpdateUser }) => {
   const [secondaryTextColor, setSecondaryTextColor] = useState(localStorage.getItem('secondaryTextColor') || '#ffffff');
   const [backgroundColorText, setBackgroundColorText] = useState(localStorage.getItem('backgroundColorText') || '#111827'); // Default gray-900 for light backgrounds
   const [publicHolidayTextColor, setPublicHolidayTextColor] = useState(localStorage.getItem('publicHolidayTextColor') || '#ffffff');
-  const [schoolHolidayTextColor, setSchoolHolidayTextColor] = useState(localStorage.getItem('schoolHolidayTextColor') || '#ffffff');
+  const [schoolHolidayTextColor, setSchoolHolidayTextColor] = useState(localStorage.getItem('schoolHolidayTextColor') || '#1f2937'); // Default Gray-800 (Dark Gray) for better default contrast
   const [bookedTextColor, setBookedTextColor] = useState(localStorage.getItem('bookedTextColor') || '#ffffff');
   // Assuming reservedTextColor will be derived or a fixed contrast color, e.g., dark gray or black, due to transparent background.
   // Or it could be the same as bookedTextColor if contrast is usually fine. For now, not a separate setting.
