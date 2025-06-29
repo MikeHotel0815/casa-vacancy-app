@@ -94,6 +94,40 @@ const capitalizeFirstLetter = (string) => {
   return string.charAt(0).toUpperCase() + string.slice(1);
 };
 
+// Custom sort function for calendar event order
+const customEventSort = (eventA, eventB) => {
+  const typeOrder = {
+    schoolHoliday: 1,
+    // publicHoliday: 2, // Not typically rendered as bars needing this sort
+    booking: 3,
+    // Add other types if they are rendered as bars and need specific order
+  };
+
+  const orderA = typeOrder[eventA.type] || 99; // Default for unknown/other types
+  const orderB = typeOrder[eventB.type] || 99;
+
+  if (orderA !== orderB) {
+    return orderA - orderB;
+  }
+
+  // Optional: Secondary sort by start date if types are the same
+  // This is less critical if primary types are distinct like schoolHoliday vs booking
+  if (eventA.start && eventB.start) {
+    const startA = new Date(eventA.start).getTime();
+    const startB = new Date(eventB.start).getTime();
+    if (startA !== startB) {
+      return startA - startB;
+    }
+  }
+  // Optional: Tertiary sort by title or ID for stability
+  if (eventA.title && eventB.title) {
+    return eventA.title.localeCompare(eventB.title);
+  }
+
+  return 0;
+};
+
+
 // Eigene Modal-Komponente, die Portals nutzt
 const Modal = ({ children }) => {
   // Verwendet Inline-Styles für garantierte Positionierung
@@ -978,7 +1012,11 @@ const handleMarkNotificationAsRead = async (notificationId) => {
           <div className="flex-grow card-custom p-0 overflow-hidden" ref={calendarRef}>
             <Calendar
               localizer={localizer}
-              events={events.filter(event => event.type !== 'publicHoliday')}
+              events={
+                calendarView === Views.AGENDA
+                  ? events.filter(event => event.type !== 'publicHoliday' && event.type !== 'schoolHoliday')
+                  : events.filter(event => event.type !== 'publicHoliday')
+              }
               startAccessor="start"
               endAccessor="end"
               selectable
@@ -1005,6 +1043,7 @@ const handleMarkNotificationAsRead = async (notificationId) => {
               eventPropGetter={eventStyleGetter}
               dayPropGetter={dayPropGetter}
               onSelecting={handleSelecting}
+              eventOrder={customEventSort} // Add the eventOrder prop
               components={{
                 month: { dateHeader: (props) => <CustomDateHeader {...props} allEvents={events} /> }
               }}
