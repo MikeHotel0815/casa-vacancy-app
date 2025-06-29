@@ -884,7 +884,7 @@ const handleMarkNotificationAsRead = async (notificationId) => {
         style.color = docStyle.getPropertyValue('--school-holiday-text-color').trim() || '#1f2937'; // Default dark text
         style.border = `1px solid ${hexToRgba(docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e', 0.5)}`;
         style.opacity = 0.85;
-        style.zIndex = 5; // Ensure school holidays are visually on top of bookings
+        style.zIndex = 15; // Increased zIndex to ensure school holidays are visually on top
         break;
       default:
         style.backgroundColor = '#64748b'; // Slate as a fallback
