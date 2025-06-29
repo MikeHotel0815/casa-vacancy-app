@@ -700,8 +700,12 @@ const handleMarkNotificationAsRead = async (notificationId) => {
         const publicHolidayBgColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
         // Apply with some transparency to differentiate from event block
         style.backgroundColor = hexToRgba(publicHolidayBgColor, 0.3);
+    } else if (isSchoolHoliday) {
+        // Explicitly do nothing here to ensure school holidays do not get a day cell background
+        // from this holiday-specific logic path.
+        // The event bar itself is styled by eventStyleGetter.
+        // If a school holiday day is part of a selection, it gets a boxShadow below.
     }
-    // Removed the 'else if (isSchoolHoliday)' block to prevent school holiday day background coloring.
     // School holiday event blocks will still be colored by eventStyleGetter.
 
     // Apply selection styling - this will override holiday background if a day is selected
