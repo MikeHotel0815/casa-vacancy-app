@@ -700,8 +700,11 @@ const handleMarkNotificationAsRead = async (notificationId) => {
         const publicHolidayBgColor = docStyle.getPropertyValue('--public-holiday-color').trim() || '#2563eb';
         // Apply with some transparency to differentiate from event block
         style.backgroundColor = hexToRgba(publicHolidayBgColor, 0.3);
+    } else if (isSchoolHoliday) { // Check for school holidays if not a public holiday
+        const schoolHolidayBgColor = docStyle.getPropertyValue('--school-holiday-color').trim() || '#a8a29e';
+        // Apply with some transparency
+        style.backgroundColor = hexToRgba(schoolHolidayBgColor, 0.3); // Using 0.3 alpha like public holidays
     }
-    // Removed the 'else if (isSchoolHoliday)' block to prevent school holiday day background coloring.
     // School holiday event blocks will still be colored by eventStyleGetter.
 
     // Apply selection styling - this will override holiday background if a day is selected
