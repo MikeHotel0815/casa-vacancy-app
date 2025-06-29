@@ -170,14 +170,15 @@ function App() {
     document.body.style.color = backgroundColorText; // Apply global text color based on background
 
     // Load calendar event colors & text colors
-    const publicHolidayColor = localStorage.getItem('publicHolidayColor') || '#2563eb';
+    // Temporarily hardcode holiday colors for debugging holiday display issue
+    const publicHolidayColor = '#2563eb'; // Default Blue-600
     document.documentElement.style.setProperty('--public-holiday-color', publicHolidayColor);
-    const publicHolidayTextColor = localStorage.getItem('publicHolidayTextColor') || '#ffffff';
+    const publicHolidayTextColor = '#ffffff'; // Default White
     document.documentElement.style.setProperty('--public-holiday-text-color', publicHolidayTextColor);
 
-    const schoolHolidayColor = localStorage.getItem('schoolHolidayColor') || '#a8a29e';
+    const schoolHolidayColor = '#a8a29e'; // Default Stone-400
     document.documentElement.style.setProperty('--school-holiday-color', schoolHolidayColor);
-    const schoolHolidayTextColor = localStorage.getItem('schoolHolidayTextColor') || '#ffffff';
+    const schoolHolidayTextColor = '#1f2937'; // Default Gray-800 (for better contrast on lighter schoolHolidayColor)
     document.documentElement.style.setProperty('--school-holiday-text-color', schoolHolidayTextColor);
 
     const bookedColor = localStorage.getItem('bookedColor') || '#dc2626';
